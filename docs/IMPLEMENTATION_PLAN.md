@@ -6,12 +6,9 @@ Production UnknownGod2011/keyboard.wtf is strictly read-only. All writes belong 
 
 The authenticated fixed-loopback MCP bridge, no-key GUI/console, approved workspaces, exact Development restore command, optional text AI and optional review-before-Send voice controls are implemented. Functional f394c08 passed Windows CI 40018157021 with 115 regressions, independent protocol tests, source/published GUI checks and actual MCP-triggered Explorer/Notepad window observation. See PROGRESS.md for commit/PR references.
 
-## Current integration work
+## Default-branch milestone
 
-1. Finish PR #7's documentation/render checkpoint, inspect its diff and verify exact-head CI.
-2. Integrate into development without overwriting concurrent commits; inspect integration CI.
-3. Review PR #2 against main: source, runtime instructions, license/notices, credential scan, workflow and package evidence. Promote the verified local preview to the default branch when those exact-head gates pass. Keep preview status and external limitations explicit.
-4. Verify main contains the intended files and that its Windows workflow succeeds. Update the durable checkpoint and recurring task context with actual refs/results.
+PRs #3–#7 are integrated into development. PR #2 merged the tested local preview into main at `802f0cfe2017380420bd450844ee7060ecfe665f`; exact-head PR CI 40019251620 passed. All 55 intended files were read back from main. Main integration CI 40019532457 passed all stages, including the actual native MCP workflow. Read the latest checkpoint before making any new changes. Keep preview status and external limitations explicit; no production release is claimed.
 
 ## Remaining validation and optional remote capability
 

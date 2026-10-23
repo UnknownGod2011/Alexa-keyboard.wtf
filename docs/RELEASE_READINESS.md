@@ -19,7 +19,7 @@ Milestone: independently runnable **local Windows MCP development preview**. The
 | Builds and regression checks | 115 checks and all Windows pipeline stages pass on functional f394c08 |
 | Fresh checkout / extracted preview | Windows checkout/restore/build and extracted launcher, including path with spaces, pass |
 | Package/licenses/secrets | Downloaded 89-file preview inspected; 19 package entries, required runtimes/notices and no credential files |
-| Default branch | Pending PR #2 integration and verification; check current GitHub state |
+| Default branch | PR #2 merged as 802f0cfe; all 55 intended files read back; main CI 40019532457 passed all stages |
 | Production Alexa+ | Not implemented/deployed/verified; separate researched design and account/hosting blockers |
 | Broad production release | Not claimed; external verification below remains |
 

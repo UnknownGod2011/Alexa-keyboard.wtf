@@ -171,3 +171,12 @@ No actual end-user Notepad visibility, Windows 10/11 interactive desktop or prod
 - The exact flagship phrase selects Development independently of an edited name in the GUI; both clients use the shared manual parser. Real standard/compact/dialog renders and the owned Notepad capture were visually inspected.
 - A downloaded preview was inspected: 89 files, required launch/runtime files, 19 dependency entries including System.Speech/10.0.13 MIT and no credential files. Source credential-pattern scan and Python syntax/diff checks passed.
 - This establishes actual native action evidence on the hosted runner. It does not establish human consent UX, end-user Windows 10/11 hardware, live AI account access or Alexa production connectivity.
+
+
+## Default-branch preview integration
+
+- PR #7 merged as `7e51af575615245c9ed744f8f03682cf7cdfd56c`; exact native/docs head c482dd2 passed Windows 40018836911.
+- Development/README head `e473d4206f014e4496ad2c9e25ca0bbebff3ac13` passed PR Windows [40019251620](https://github.com/UnknownGod2011/Alexa-keyboard.wtf/actions/runs/40019251620) and push 40019236535.
+- PR #2 merged into **main** as `802f0cfe2017380420bd450844ee7060ecfe665f`. All 55 intended files were read back; README contains default-branch installation commands and current limitations.
+- Fresh main Windows [40019532457](https://github.com/UnknownGod2011/Alexa-keyboard.wtf/actions/runs/40019532457), **success**: all builds, 115 checks, source/published raw+SDK MCP and GUI, real approved-directory/Notepad window observation through the isolated MCP fixture, native WAV, package/script/extracted-launcher and owned cleanup.
+- The local development preview is now on the default branch. No production Alexa+ release, human consent/hardware verification or live paid-provider test is claimed.
