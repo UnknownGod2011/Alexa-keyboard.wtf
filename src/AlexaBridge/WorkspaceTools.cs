@@ -85,7 +85,7 @@ public sealed class WorkspaceTools(WorkspaceStore store, WorkspaceRoot root, IAc
             steps.Any(s => s.State != "process_reported"));
     }
 
-    private static bool IsExpected(Exception ex) => ex is ArgumentException or IOException or UnauthorizedAccessException or JsonException or InvalidOperationException;
+    private static bool IsExpected(Exception ex) => ex is ArgumentException or InvalidDataException or IOException or UnauthorizedAccessException or JsonException or InvalidOperationException;
     private static CallToolResult Guard(Func<CallToolResult> action)
     {
         try { return action(); }

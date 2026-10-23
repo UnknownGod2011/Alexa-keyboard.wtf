@@ -60,6 +60,15 @@ internal static class WorkspaceChecks
             catch (OperationCanceledException) { check(folder.Calls == before, "cancellation during approval prevents all launch steps"); }
             approval.AfterApproval = null;
         }
+        // Approval is for an immutable action snapshot even if another save arrives while waiting.
+        store.Save("Snapshot", "Example", "original", true, false, default);
+        var beforeSnapshotNotepad = notepad.Calls;
+        approval.AfterApproval = () => store.Save("Snapshot", "Example", "changed", true, true, default);
+        var snapshot = await Tools().RestoreWorkspace("Snapshot", default);
+        check(snapshot.IsError != true && notepad.Calls == beforeSnapshotNotepad && Text(snapshot).Contains("original", StringComparison.Ordinal),
+            "editing a record during approval cannot add an unapproved action");
+        approval.AfterApproval = null;
+
         var secondRoot = Path.Combine(temporaryRoot, "different-projects");
         Directory.CreateDirectory(Path.Combine(secondRoot, "Example"));
         var changedRoot = new WorkspaceRoot(secondRoot);

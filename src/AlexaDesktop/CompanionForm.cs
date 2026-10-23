@@ -172,7 +172,7 @@ public sealed class CompanionForm : Form
                 _summary.Text = handoff.RootElement.GetProperty("Summary").GetString() ?? "";
             }
             AddCard(tool + (result.IsError == true ? " · denied or failed" : " · completed"),
-                result.IsError == true ? text : PresentResult(tool, text), result.IsError == true ? Color.Salmon : Accent);
+                PresentResult(tool, text), result.IsError == true ? Color.Salmon : Accent);
         });
     }
 
@@ -253,9 +253,20 @@ public sealed class CompanionForm : Form
 
     private static string PresentResult(string tool, string text)
     {
-        if (tool is not ("get_desktop_status" or "load_task_handoff")) return text;
+        if (tool is not ("get_desktop_status" or "load_task_handoff" or "get_workspace_policy" or "save_workspace" or "load_workspace" or "restore_workspace") || !text.TrimStart().StartsWith('{')) return text;
         using var document = JsonDocument.Parse(text);
         var data = document.RootElement;
+        if (tool == "get_workspace_policy")
+            return $"Approved project root: {data.GetProperty("root").GetString()}\n\nDesktop launches: {(data.GetProperty("desktopActionsEnabled").GetBoolean() ? "enabled, with fresh approval for each restore" : "disabled by the server operator")}";
+        if (tool is "save_workspace" or "load_workspace")
+            return $"{data.GetProperty("Name").GetString()}\nFolder: {data.GetProperty("RelativeFolder").GetString()}\nOpen folder: {data.GetProperty("OpenFolder").GetBoolean()} · Open Notepad: {data.GetProperty("OpenNotepad").GetBoolean()}\n\n{data.GetProperty("Summary").GetString()}\n\nSaved: {data.GetProperty("SavedAt").GetDateTimeOffset().ToLocalTime():g}";
+        if (tool == "restore_workspace")
+            return data.GetProperty("workspace").GetString() + "\n\n" +
+                string.Join("\n", data.GetProperty("steps").EnumerateArray().Select(step =>
+                    step.GetProperty("Action").GetString() + ": " + step.GetProperty("State").GetString() +
+                    (step.GetProperty("ProcessId").ValueKind == JsonValueKind.Number ? " (PID " + step.GetProperty("ProcessId").GetInt32() + ")" : "") +
+                    (step.GetProperty("Detail").ValueKind == JsonValueKind.String ? " · " + step.GetProperty("Detail").GetString() : ""))) +
+                "\n\n" + data.GetProperty("note").GetString();
         if (tool == "load_task_handoff")
             return $"{data.GetProperty("Name").GetString()}\n\n{data.GetProperty("Summary").GetString()}\n\nSaved: {data.GetProperty("SavedAt").GetDateTimeOffset().ToLocalTime():g}";
         var enabled = data.GetProperty("desktopActionsEnabled").GetBoolean();
