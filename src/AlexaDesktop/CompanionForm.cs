@@ -361,6 +361,12 @@ public sealed class CompanionForm : Form
         _shortcuts[5].PerformClick();
         await _currentTask;
         Ensure(LastCard().Title == "restore_workspace · denied or failed" && LastCard().Body.Contains("disabled", StringComparison.Ordinal), "restore button bypassed operator policy");
+        _name.Text = "UnrelatedMissing";
+        _input.Text = "Restore my development workspace";
+        _send.PerformClick();
+        await _currentTask;
+        Ensure(LastCard().Title == "restore_workspace · denied or failed" && LastCard().Body.Contains("disabled", StringComparison.Ordinal), "flagship phrase did not select the saved Development workspace independently of edited name");
+        _name.Text = "Development";
         _input.Text = "workspace policy";
         _send.PerformClick();
         await _currentTask;
@@ -377,20 +383,6 @@ public sealed class CompanionForm : Form
         _read.PerformClick();
         await _currentTask;
         Ensure(voice.Spoken == spoken[..Math.Min(500, spoken.Length)], "read-aloud button did not use the explicit output adapter");
-        voice.Fail = true;
-        _dictate.PerformClick();
-        await _currentTask;
-        Ensure(LastCard().Title == "Voice unavailable" && _bridge is not null && _send.Enabled, "microphone failure broke manual MCP mode");
-        voice.Fail = false;
-        voice.Block = true;
-        _input.Text = "preserve input";
-        _dictate.PerformClick();
-        await voice.Listening.Task.WaitAsync(TimeSpan.FromSeconds(5));
-        _cancel.PerformClick();
-        await _currentTask;
-        Ensure(_input.Text == "preserve input" && _dictate.Enabled && _send.Enabled, "cancelled dictation changed input or stranded controls");
-        voice.Block = false;
-
         var directory = Environment.GetEnvironmentVariable("ALEXA_UI_CAPTURE_DIR");
         if (!string.IsNullOrWhiteSpace(directory))
         {
@@ -413,6 +405,20 @@ public sealed class CompanionForm : Form
             compact.Save(Path.Combine(directory, "companion-control-render-compact.png"), System.Drawing.Imaging.ImageFormat.Png);
             Size = previousSize;
         }
+
+        voice.Fail = true;
+        _dictate.PerformClick();
+        await _currentTask;
+        Ensure(LastCard().Title == "Voice unavailable" && _bridge is not null && _send.Enabled, "microphone failure broke manual MCP mode");
+        voice.Fail = false;
+        voice.Block = true;
+        _input.Text = "preserve input";
+        _dictate.PerformClick();
+        await voice.Listening.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        _cancel.PerformClick();
+        await _currentTask;
+        Ensure(_input.Text == "preserve input" && _dictate.Enabled && _send.Enabled, "cancelled dictation changed input or stranded controls");
+        voice.Block = false;
 
         _name.Text = "../escape";
         _shortcuts[1].PerformClick();

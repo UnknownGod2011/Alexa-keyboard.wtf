@@ -2,7 +2,7 @@
 
 A standalone Windows companion that exposes a small set of desktop capabilities through the Model Context Protocol. A console simulator and a Windows graphical simulator use the same authenticated MCP client over Streamable HTTP.
 
-**Status:** development preview. Automated Windows protocol and regression checks, the combined launch policy, and the graphical simulator build pass CI; visible Windows interaction and production Alexa+ connectivity remain unverified. This is an independent application, not an official Amazon Alexa product.
+**Status:** development preview. Automated Windows protocol, regression, GUI and native Notepad-window checks pass CI. End-user Windows 10/11 consent/audio behavior and production Alexa+ connectivity remain unverified. This is an independent application, not an official Amazon Alexa product.
 
 ## Implemented features
 
@@ -113,7 +113,7 @@ $env:ALEXA_WORKSPACE_ROOT = "C:\Projects"
 
 In the graphical client, enter a workspace name and non-sensitive summary, then choose **Save workspace**. Enter an existing folder relative to the approved root (for example `Example`, or `.` for the root itself) and select the actions to save. Saving does not launch anything. Type `workspace policy` to inspect the configured root or `load workspace` to read the saved record.
 
-Choose **Restore** using the saved name. The bridge console shows the exact folder and requested actions. One fresh approval authorizes that bundle only. Restoring can open the approved folder and/or a blank Windows Notepad; it does not restore editor tabs, terminals, running processes or arbitrary commands. Results report each step separately. A shell request without a returned process is explicitly unverified, and a reported process still does not prove a visible window. Check the desktop before retrying a partial or cancelled restore.
+Choose **Restore** using the saved name, or type `Restore my development workspace` to explicitly restore the saved `Development` workspace. The bridge console shows the exact folder and requested actions. One fresh approval authorizes that bundle only. Restoring can open the approved folder and/or a blank Windows Notepad; it does not restore editor tabs, terminals, running processes or arbitrary commands. Results report each step separately. A shell request without a returned process is explicitly unverified, and a reported process still does not prove a visible window. Check the desktop before retrying a partial or cancelled restore.
 
 Relative traversal, network roots, symbolic links and junctions (including ancestors) are rejected. Changing the configured root invalidates existing saved workspaces until saved again. This binds records to the configured root path, not the identity of an underlying disk directory; another program running as the same OS account can modify local directories. An unconfigured root produces an actionable error without disabling the handoff tools.
 
@@ -130,6 +130,7 @@ Relative traversal, network roots, symbolic links and junctions (including ances
 | `save workspace` | Save folder, summary and explicit actions; GUI opens a form |
 | `load workspace` | Read and validate the named workspace |
 | `restore workspace` | Request approval for the named workspace bundle |
+| `restore my development workspace` | Request approval for the saved `Development` workspace |
 | `ask <question>` | Send an explicit prompt to configured optional AI |
 | `ai status` / `ai reset` | Inspect safe AI status / clear in-memory ask history |
 
@@ -170,7 +171,7 @@ The regression executable tests permission denials, cancellation before side eff
 
 An independent Python HTTP client additionally checks MCP `2025-11-25` negotiation, initialization lifecycle, argument schemas, concurrent calls, and protocol errors. Startup tests reject a second server without rotating its live token; shutdown tests require authentication and verify credential cleanup. Runtime and handoff directories are isolated during smoke tests. Windows CI also exercises published DLLs and the extracted launcher from a directory with spaces. It verifies that the launcher refuses a foreign listener and that shutdown rejects an owner-process mismatch.
 
-Windows CI exercises graphical controls over MCP and captures actual control renders at standard and compact sizes. It does not establish visible end-user desktop behavior. See [test evidence](docs/TEST_RESULTS.md) and [interactive Windows checks](docs/WINDOWS_MANUAL_TEST.md).
+Windows CI exercises graphical controls over MCP and captures actual control renders at standard and compact sizes. An opt-in isolated native fixture also calls the real workspace tools through the SDK, supplies test-only local-console denial/approval, launches actual Windows Notepad, observes its owned visible window and captures that window. The production host is separately tested for headless denial; no network approval bypass is added. Native synthesis produces WAV audio without using a microphone or speakers. These checks do not establish human consent UX or end-user audio hardware behavior. See [test evidence](docs/TEST_RESULTS.md) and [interactive Windows checks](docs/WINDOWS_MANUAL_TEST.md).
 
 ## Security and privacy
 

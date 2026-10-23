@@ -18,7 +18,6 @@ internal static class Program
         var occupied = existing.Length > 0;
         foreach (var process in existing) process.Dispose();
         if (occupied) { Console.Error.WriteLine("Refusing to interfere with an existing Notepad session."); return 2; }
-        var started = DateTime.Now;
         var owned = new Dictionary<int, DateTime>();
         try
         {
@@ -28,19 +27,15 @@ internal static class Program
                 fixture.StartAsync().GetAwaiter().GetResult();
                 fixture.RestoreThroughMcpAsync().GetAwaiter().GetResult();
             }
-            finally { fixture.DisposeAsync().AsTask().GetAwaiter().GetResult(); }
+            finally
+            {
+                foreach (var item in fixture.OwnedProcesses) owned.TryAdd(item.Key, item.Value);
+                fixture.DisposeAsync().AsTask().GetAwaiter().GetResult();
+            }
             IntPtr window = IntPtr.Zero;
             Rectangle bounds = default;
             for (var i = 0; i < 60 && window == IntPtr.Zero; i++)
             {
-                foreach (var process in Process.GetProcessesByName("notepad"))
-                {
-                    using (process)
-                    {
-                        try { if (process.StartTime >= started.AddSeconds(-1)) owned.TryAdd(process.Id, process.StartTime); }
-                        catch (InvalidOperationException) { }
-                    }
-                }
                 EnumWindows((handle, _) => {
                     GetWindowThreadProcessId(handle, out var pid);
                     if (!owned.ContainsKey((int)pid) || !IsWindowVisible(handle) || !GetWindowRect(handle, out var rect)) return true;

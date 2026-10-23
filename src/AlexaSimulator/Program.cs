@@ -47,18 +47,18 @@ try
                 continue;
             }
             if (client is null) { Console.WriteLine("This chat-only session has no desktop bridge connection. Use ask, ai status, ai reset or quit."); continue; }
-            switch (command)
+            switch (parsed)
             {
-                case "tools":
+                case AlexaClient.ManualCommand.Discover:
                     callTimeout.CancelAfter(TimeSpan.FromSeconds(40));
                     var tools = await client.ListToolsAsync(cancellationToken: callTimeout.Token);
                     foreach (var tool in tools) Console.WriteLine("  " + tool.Name);
                     break;
-                case "status":
+                case AlexaClient.ManualCommand.Status:
                     callTimeout.CancelAfter(TimeSpan.FromSeconds(40));
                     Print(await client.CallToolAsync("get_desktop_status", cancellationToken: callTimeout.Token));
                     break;
-                case "save":
+                case AlexaClient.ManualCommand.Save:
                     Console.Write("Session name: ");
                     var saveName = Console.ReadLine() ?? "";
                     Console.Write("Task summary (not sensitive data): ");
@@ -69,7 +69,7 @@ try
                         ["name"] = saveName, ["summary"] = summary
                     }, cancellationToken: callTimeout.Token));
                     break;
-                case "load":
+                case AlexaClient.ManualCommand.Load:
                     Console.Write("Session name: ");
                     var loadName = Console.ReadLine() ?? "";
                     callTimeout.CancelAfter(TimeSpan.FromSeconds(40));
@@ -78,15 +78,15 @@ try
                         ["name"] = loadName
                     }, cancellationToken: callTimeout.Token));
                     break;
-                case "restore my development workspace":
+                case AlexaClient.ManualCommand.RestoreDevelopmentWorkspace:
                     callTimeout.CancelAfter(TimeSpan.FromSeconds(40));
                     Print(await client.CallToolAsync("restore_workspace", new Dictionary<string, object?> { ["name"] = "Development" }, cancellationToken: callTimeout.Token));
                     break;
-                case "workspace policy":
+                case AlexaClient.ManualCommand.WorkspacePolicy:
                     callTimeout.CancelAfter(TimeSpan.FromSeconds(40));
                     Print(await client.CallToolAsync("get_workspace_policy", cancellationToken: callTimeout.Token));
                     break;
-                case "save workspace":
+                case AlexaClient.ManualCommand.SaveWorkspace:
                     Console.Write("Workspace name: ");
                     var workspaceName = Console.ReadLine() ?? "";
                     Console.Write("Folder relative to the approved root ('.' = root): ");
@@ -103,15 +103,15 @@ try
                         ["openFolder"] = openFolder, ["openNotepad"] = openNotepad
                     }, cancellationToken: callTimeout.Token));
                     break;
-                case "load workspace":
-                case "restore workspace":
+                case AlexaClient.ManualCommand.LoadWorkspace:
+                case AlexaClient.ManualCommand.RestoreWorkspace:
                     Console.Write("Workspace name: ");
                     var selectedWorkspace = Console.ReadLine() ?? "";
                     callTimeout.CancelAfter(TimeSpan.FromSeconds(40));
-                    Print(await client.CallToolAsync(command == "load workspace" ? "load_workspace" : "restore_workspace",
+                    Print(await client.CallToolAsync(parsed == AlexaClient.ManualCommand.LoadWorkspace ? "load_workspace" : "restore_workspace",
                         new Dictionary<string, object?> { ["name"] = selectedWorkspace }, cancellationToken: callTimeout.Token));
                     break;
-                case "notepad":
+                case AlexaClient.ManualCommand.Notepad:
                     callTimeout.CancelAfter(TimeSpan.FromSeconds(40));
                     Console.WriteLine("Requesting Notepad. Approve or deny this request in the server console.");
                     Print(await client.CallToolAsync("open_notepad", cancellationToken: callTimeout.Token));

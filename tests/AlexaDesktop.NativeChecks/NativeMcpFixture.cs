@@ -22,6 +22,8 @@ internal sealed class NativeMcpFixture : IAsyncDisposable
     private LocalMcpAccess? _access;
     private WebApplication? _app;
     private McpClient? _client;
+    private readonly ObservedNotepadLauncher _launcher = new();
+    internal IReadOnlyDictionary<int, DateTime> OwnedProcesses => _launcher.Owned;
 
     internal async Task StartAsync()
     {
@@ -39,7 +41,7 @@ internal sealed class NativeMcpFixture : IAsyncDisposable
         builder.Services.AddSingleton(new WorkspaceStore(Path.Combine(_directory, "workspaces"), root));
         builder.Services.AddSingleton(new DesktopActionPolicy(true));
         builder.Services.AddSingleton<IActionApproval>(new ConsoleActionApproval(_input, _output, true, TimeSpan.FromSeconds(10)));
-        builder.Services.AddSingleton<INotepadLauncher, NotepadLauncher>();
+        builder.Services.AddSingleton<INotepadLauncher>(_launcher);
         builder.Services.AddSingleton<IWorkspaceFolderLauncher, WorkspaceFolderLauncher>();
         builder.Services.AddMcpServer().WithHttpTransport().WithToolsFromAssembly(typeof(DesktopTools).Assembly);
         _app = builder.Build();
@@ -103,6 +105,27 @@ internal sealed class NativeMcpFixture : IAsyncDisposable
         _access?.Dispose();
         Environment.SetEnvironmentVariable("ALEXA_BRIDGE_RUNTIME_DIR", _priorRuntime);
         if (Directory.Exists(_directory)) Directory.Delete(_directory, recursive: true);
+    }
+
+    private sealed class ObservedNotepadLauncher : INotepadLauncher
+    {
+        private readonly NotepadLauncher _actual = new();
+        internal readonly Dictionary<int, DateTime> Owned = new();
+        public bool Supported => _actual.Supported;
+        public int? Launch()
+        {
+            var pid = _actual.Launch();
+            if (pid.HasValue)
+            {
+                try
+                {
+                    using var process = System.Diagnostics.Process.GetProcessById(pid.Value);
+                    if (process.ProcessName.Equals("notepad", StringComparison.OrdinalIgnoreCase)) Owned.TryAdd(pid.Value, process.StartTime);
+                }
+                catch (Exception ex) when (ex is ArgumentException or InvalidOperationException) { }
+            }
+            return pid;
+        }
     }
 
     private sealed class Input : TextReader
