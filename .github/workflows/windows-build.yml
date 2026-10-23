@@ -29,7 +29,7 @@ jobs:
       - name: Build graphical Windows companion
         run: dotnet build src/AlexaDesktop/AlexaDesktop.csproj --configuration Release
       - name: Real MCP SDK client/server smoke test
-        run: python scripts/run-protocol-smoke.py
+        run: python scripts/run-protocol-smoke.py --ui
       - name: Permission, cancellation and persistence regression checks
         run: dotnet run --project tests/AlexaBridge.Checks/AlexaBridge.Checks.csproj --configuration Release
       - name: Prepare framework-dependent Windows preview
@@ -39,4 +39,10 @@ jobs:
           name: windows-development-preview
           path: artifacts/windows-preview
           if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: windows-ui-control-render
+          path: artifacts/ui/*.png
+          if-no-files-found: warn
 

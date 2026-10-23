@@ -66,3 +66,15 @@ Implemented after the preceding pass: shared client, manual command routing, gra
 - This is build and headless evidence. No window layout, visible Notepad launch or production Alexa connection was tested.
 
 Newest raw HTTP, lifecycle, launcher and preview-package changes are pending the next CI run.
+
+## Independent protocol, lifecycle and packaging validation
+
+- Commit: 3e048c43a6eaa7bcf1b07673ecbb894f7d6e58d2
+- Windows CI: [39987908464](https://github.com/UnknownGod2011/Alexa-keyboard.wtf/actions/runs/39987908464), **success**.
+- Independent Python client negotiated MCP 2025-11-25 and passed initialize/notification lifecycle, exact tool inventory and schemas, concurrent calls, invalid input and protocol-error checks.
+- SDK-client smoke passed; a second server could not replace the live token; authenticated graceful shutdown exited cleanly and removed the token.
+- **40** regression checks passed, including operator policy, denied/cancelled adapter calls, persistence, token lease/rotation and command routing.
+- Bridge, shared client, console and graphical projects built with zero warnings/errors in the captured CI build logs.
+- Framework-dependent Windows preview published and uploaded as a CI artifact (64 files, about 4 MB zipped). No claim of a tested installer or actual interactive desktop launch.
+
+A new hosted graphical-control smoke now exercises actual form button handlers through MCP and captures a control-render bitmap. It remains pending CI at this checkpoint and will not establish a physical interactive desktop or real Notepad visibility.

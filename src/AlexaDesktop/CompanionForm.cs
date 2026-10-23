@@ -227,6 +227,59 @@ public sealed class CompanionForm : Form
         }
     }
 
+    // Exercises the actual button handlers and transport on a hosted Windows runner.
+    // This is not an interactive-desktop or real Notepad-visibility assertion.
+    internal async Task VerifyUiAsync()
+    {
+        await _currentTask;
+        Ensure(_bridge is not null && _tools.Items.Count == 4, "initial connection/discovery failed");
+        _input.Text = "status";
+        _send.PerformClick();
+        await _currentTask;
+        Ensure(LastCard().Title == "get_desktop_status · completed" && LastCard().Body.Contains("platform", StringComparison.Ordinal), "status button did not return an actual tool result");
+        _name.Text = "UiSmoke" + Guid.NewGuid().ToString("N");
+        _summary.Text = "Graphical simulator to MCP server round trip";
+        _shortcuts[1].PerformClick();
+        await _currentTask;
+        Ensure(LastCard().Title == "save_task_handoff · completed", "save button failed");
+        _shortcuts[2].PerformClick();
+        await _currentTask;
+        Ensure(LastCard().Title == "load_task_handoff · completed" && LastCard().Body.Contains(_summary.Text, StringComparison.Ordinal), "load button did not retrieve saved data");
+
+        var directory = Environment.GetEnvironmentVariable("ALEXA_UI_CAPTURE_DIR");
+        if (!string.IsNullOrWhiteSpace(directory))
+        {
+            Directory.CreateDirectory(directory);
+            Refresh();
+            using var bitmap = new Bitmap(Width, Height);
+            DrawToBitmap(bitmap, new Rectangle(0, 0, Width, Height));
+            bitmap.Save(Path.Combine(directory, "companion-control-render.png"), System.Drawing.Imaging.ImageFormat.Png);
+        }
+
+        _name.Text = "../escape";
+        _shortcuts[1].PerformClick();
+        await _currentTask;
+        Ensure(LastCard().Title == "save_task_handoff · denied or failed" && _name.Enabled && _send.Enabled, "validation error did not preserve usable controls");
+        _input.Text = "open notepad && delete everything";
+        _send.PerformClick();
+        await _currentTask;
+        Ensure(LastCard().Title == "Manual mode", "unsupported input selected a desktop action");
+        _connect.PerformClick();
+        await _currentTask;
+        Ensure(_bridge is not null && _tools.Items.Count == 4 && _connect.Enabled, "reconnect failed");
+    }
+
+    private (string Title, string Body) LastCard()
+    {
+        var labels = _history.Controls.OfType<FlowLayoutPanel>().Last().Controls.OfType<Label>().ToArray();
+        return (labels[0].Text, labels[1].Text);
+    }
+
+    private static void Ensure(bool condition, string message)
+    {
+        if (!condition) throw new InvalidOperationException(message);
+    }
+
     private async void OnClosing(object? sender, FormClosingEventArgs e)
     {
         if (_allowClose) return;

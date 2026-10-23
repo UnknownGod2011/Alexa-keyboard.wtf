@@ -11,9 +11,10 @@ This is a development preview, not a verified release.
 | Default-denied launches | Passed scheduled-worker CI |
 | Per-action host approval, cancellation, truthful errors | Passed recording-adapter and headless MCP checks |
 | Combined policy and graphical simulator build | Passed Windows CI 39987052287 |
-| Visible simulator behavior | Unverified; interactive Windows required |
+| Hosted graphical control events/render | Smoke implemented; current CI pending |
+| Visible simulator behavior | Interactive end-user desktop still unverified |
 | Actual Notepad window | Unverified; interactive Windows required |
-| Fresh download / preview package | Packaging script implemented; awaiting CI and interactive Windows validation |
+| Fresh download / preview package | CI built/uploaded the preview; extracted-package launch and interactive Windows validation pending |
 | Optional AI / voice | Not implemented |
 | Production Alexa+ connectivity | Not implemented or verified |
 | Ready for main / public release | No; remaining gates must be completed |

@@ -22,6 +22,7 @@ from raw_protocol_checks import run_checks
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 SERVER = ROOT / "src" / "AlexaBridge" / "bin" / "Release" / "net8.0" / "AlexaBridge.dll"
 CLIENT = ROOT / "src" / "AlexaSimulator" / "bin" / "Release" / "net8.0" / "AlexaSimulator.dll"
+DESKTOP = ROOT / "src" / "AlexaDesktop" / "bin" / "Release" / "net8.0-windows" / "AlexaDesktop.dll"
 HEALTH = "http://127.0.0.1:32178/health"
 
 
@@ -81,6 +82,18 @@ def main() -> int:
                 print(result.stderr, file=sys.stderr, end="")
             if result.returncode != 0:
                 raise RuntimeError(f"MCP SDK client smoke test failed: exit {result.returncode}")
+
+            if "--ui" in sys.argv:
+                if os.name != "nt" or not DESKTOP.is_file():
+                    raise RuntimeError("--ui requires Windows and a Release build of AlexaDesktop.")
+                ui_env = dict(env, ALEXA_UI_CAPTURE_DIR=str(ROOT / "artifacts" / "ui"))
+                ui = subprocess.run(["dotnet", str(DESKTOP), "--ui-smoke"], cwd=ROOT, env=ui_env,
+                                    capture_output=True, text=True, timeout=90, check=False)
+                print(ui.stdout, end="")
+                if ui.stderr:
+                    print(ui.stderr, file=sys.stderr, end="")
+                if ui.returncode != 0:
+                    raise RuntimeError(f"Graphical MCP smoke failed: exit {ui.returncode}")
 
             # A lifecycle request must be authenticated, just like MCP.
             shutdown = "http://127.0.0.1:32178/local/shutdown"
