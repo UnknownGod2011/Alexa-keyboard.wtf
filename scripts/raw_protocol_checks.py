@@ -84,12 +84,25 @@ def run_checks(token: str) -> None:
         status, listed, _ = send({"jsonrpc": "2.0", "id": 2, "method": "tools/list", "params": {}}, request_id=2)
         ensure(status == 200, "Raw tools/list failed.")
         tools = {tool["name"]: tool for tool in listed.get("result", {}).get("tools", [])}
-        ensure(set(tools) == {"get_desktop_status", "open_notepad", "save_task_handoff", "load_task_handoff"},
+        ensure(set(tools) == {"get_desktop_status", "open_notepad", "save_task_handoff", "load_task_handoff",
+                              "get_workspace_policy", "save_workspace", "load_workspace", "restore_workspace"},
                "Unexpected raw tool inventory.")
         ensure(not tools["open_notepad"]["inputSchema"].get("properties"),
                "Host approval, launcher or cancellation leaked into MCP tool arguments.")
         ensure(set(tools["save_task_handoff"]["inputSchema"].get("required", [])) == {"name", "summary"},
                "Save schema did not expose exactly the required user arguments.")
+
+        ensure(set(tools["restore_workspace"]["inputSchema"].get("properties", {})) == {"name"},
+               "Restore schema must never expose approval, root or launch adapters.")
+        ensure(set(tools["save_workspace"]["inputSchema"].get("required", [])) ==
+               {"name", "relativeFolder", "summary", "openFolder", "openNotepad"},
+               "Workspace save must require explicit actions and folder.")
+        ensure(call(10, "get_workspace_policy").get("isError") is not True, "Workspace fixture root was not configured.")
+        ensure(call(11, "save_workspace", {"name": "Unsafe", "relativeFolder": "../escape", "summary": "reject",
+                                           "openFolder": True, "openNotepad": False}).get("isError") is True,
+               "Raw workspace traversal was accepted.")
+        ensure(call(12, "restore_workspace", {"name": "Missing"}).get("isError") is True,
+               "Missing workspace was accepted.")
 
         result = call(3, "get_desktop_status")
         ensure(result.get("isError") is not True, "Raw desktop status failed.")
