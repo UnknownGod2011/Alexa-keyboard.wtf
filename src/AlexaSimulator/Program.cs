@@ -116,6 +116,12 @@ static async Task<int> RunSmokeAsync(McpClient client)
     Ensure(status.IsError != true && Text(status).Contains("platform", StringComparison.Ordinal),
         "Desktop status tool returned an unexpected response.");
 
+    // CI must never launch a GUI process: default server policy denies desktop
+    // side effects until its operator explicitly opts in before server startup.
+    var launchDenied = await client.CallToolAsync("open_notepad", cancellationToken: ct);
+    Ensure(Text(launchDenied).Contains("Denied: desktop application launches", StringComparison.Ordinal),
+        "Desktop application launch was not denied by the server's default policy.");
+
     var name = "Smoke" + Guid.NewGuid().ToString("N");
     const string summary = "MCP client to server round-trip test";
     var saved = await client.CallToolAsync("save_task_handoff",
@@ -187,7 +193,7 @@ static async Task<int> RunSmokeAsync(McpClient client)
     }
     Ensure(rejected, "Unknown MCP tool was accepted.");
 
-    Console.WriteLine("PASS: SDK MCP initialize, discovery, status, save/load, validation, unknown tool, local bearer authentication, Host/Origin.");
+    Console.WriteLine("PASS: SDK MCP initialize, discovery, status, save/load, validation, unknown tool, default-denied desktop launch, local bearer authentication, Host/Origin.");
     Console.WriteLine("NOTE: No interactive Windows GUI action was attempted by this headless smoke test.");
     return 0;
 }
