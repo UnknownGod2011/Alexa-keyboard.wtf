@@ -78,3 +78,11 @@ Newest raw HTTP, lifecycle, launcher and preview-package changes are pending the
 - Framework-dependent Windows preview published and uploaded as a CI artifact (64 files, about 4 MB zipped). No claim of a tested installer or actual interactive desktop launch.
 
 A new hosted graphical-control smoke now exercises actual form button handlers through MCP and captures a control-render bitmap. It remains pending CI at this checkpoint and will not establish a physical interactive desktop or real Notepad visibility.
+
+## Graphical controls over real MCP
+
+- Commit: 371cb2fc4fd91604b003b740f34386fd5919f1b8
+- Windows CI: [39988366057](https://github.com/UnknownGod2011/Alexa-keyboard.wtf/actions/runs/39988366057), **success**.
+- The Windows Forms application ran its real button handlers and authenticated transport: connection/discovery, status, save/load, error recovery, unsupported-input handling and reconnect all passed.
+- A bitmap rendered from the actual Windows controls was captured in CI and visually inspected in Work. It is a control render, not a fabricated screenshot or proof of an end-user interactive desktop.
+- Follow-up: improved result readability and summary restoration; added compact-window layout checks, published-DLL validation and extracted-package launcher tests. These follow-up changes await CI.

@@ -34,6 +34,18 @@ jobs:
         run: dotnet run --project tests/AlexaBridge.Checks/AlexaBridge.Checks.csproj --configuration Release
       - name: Prepare framework-dependent Windows preview
         run: ./scripts/package-windows.ps1
+      - name: Parse PowerShell entrypoints
+        run: |
+          Get-ChildItem scripts/*.ps1 | ForEach-Object {
+            $scriptTokens = $null
+            $scriptErrors = $null
+            [System.Management.Automation.Language.Parser]::ParseFile($_.FullName, [ref]$scriptTokens, [ref]$scriptErrors) | Out-Null
+            if ($scriptErrors.Count) { throw ($scriptErrors | Out-String) }
+          }
+      - name: Validate the actual published package over MCP
+        run: python scripts/run-protocol-smoke.py --package-root artifacts/windows-preview --ui
+      - name: Verify extracted-package launcher and cleanup
+        run: python scripts/test-windows-launcher.py --package-root artifacts/windows-preview
       - uses: actions/upload-artifact@v4
         with:
           name: windows-development-preview
@@ -43,6 +55,6 @@ jobs:
         if: always()
         with:
           name: windows-ui-control-render
-          path: artifacts/ui/*.png
+          path: artifacts/ui/**/*.png
           if-no-files-found: warn
 

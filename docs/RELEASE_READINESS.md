@@ -11,7 +11,7 @@ This is a development preview, not a verified release.
 | Default-denied launches | Passed scheduled-worker CI |
 | Per-action host approval, cancellation, truthful errors | Passed recording-adapter and headless MCP checks |
 | Combined policy and graphical simulator build | Passed Windows CI 39987052287 |
-| Hosted graphical control events/render | Smoke implemented; current CI pending |
+| Hosted graphical control events/render | Passed CI 39988366057; captured control render visually inspected |
 | Visible simulator behavior | Interactive end-user desktop still unverified |
 | Actual Notepad window | Unverified; interactive Windows required |
 | Fresh download / preview package | CI built/uploaded the preview; extracted-package launch and interactive Windows validation pending |

@@ -8,6 +8,7 @@ DesktopTools directly.
 from __future__ import annotations
 
 import pathlib
+import argparse
 import os
 import json
 import socket
@@ -27,7 +28,15 @@ HEALTH = "http://127.0.0.1:32178/health"
 
 
 def main() -> int:
-    if not SERVER.is_file() or not CLIENT.is_file():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--ui", action="store_true", help="Run actual Windows graphical control/MCP checks.")
+    parser.add_argument("--package-root", type=pathlib.Path, help="Validate published DLLs instead of source build output.")
+    options = parser.parse_args()
+    work = options.package_root.resolve() if options.package_root else ROOT
+    server_dll = work / "bridge" / "AlexaBridge.dll" if options.package_root else SERVER
+    client_dll = work / "console" / "AlexaSimulator.dll" if options.package_root else CLIENT
+    desktop_dll = work / "desktop" / "AlexaDesktop.dll" if options.package_root else DESKTOP
+    if not server_dll.is_file() or not client_dll.is_file():
         print("Build both projects in Release configuration first.", file=sys.stderr)
         return 2
 
@@ -40,8 +49,8 @@ def main() -> int:
         runtime = pathlib.Path(data) / "runtime"
         env = dict(os.environ, ALEXA_BRIDGE_DATA_DIR=str(pathlib.Path(data) / "handoffs"), ALEXA_BRIDGE_RUNTIME_DIR=str(runtime))
         server = subprocess.Popen(
-            ["dotnet", str(SERVER), "--deny-actions"],
-            cwd=ROOT,
+            ["dotnet", str(server_dll), "--deny-actions"],
+            cwd=work,
             stdout=log,
             stderr=subprocess.STDOUT,
             env=env,
@@ -62,15 +71,15 @@ def main() -> int:
 
             token_file = runtime / "mcp-auth-token"
             token = token_file.read_text().strip()
-            duplicate = subprocess.run(["dotnet", str(SERVER), "--deny-actions"], cwd=ROOT,
+            duplicate = subprocess.run(["dotnet", str(server_dll), "--deny-actions"], cwd=work,
                                        capture_output=True, text=True, timeout=15, env=env, stdin=subprocess.DEVNULL)
             if duplicate.returncode == 0 or token_file.read_text().strip() != token:
                 raise RuntimeError("Second bridge instance did not preserve the running server's credential.")
             print("PASS: second server rejected without changing the live token.")
             run_checks(token)
             result = subprocess.run(
-                ["dotnet", str(CLIENT), "--smoke"],
-                cwd=ROOT,
+                ["dotnet", str(client_dll), "--smoke"],
+                cwd=work,
                 capture_output=True,
                 text=True,
                 timeout=90,
@@ -83,11 +92,12 @@ def main() -> int:
             if result.returncode != 0:
                 raise RuntimeError(f"MCP SDK client smoke test failed: exit {result.returncode}")
 
-            if "--ui" in sys.argv:
-                if os.name != "nt" or not DESKTOP.is_file():
+            if options.ui:
+                if os.name != "nt" or not desktop_dll.is_file():
                     raise RuntimeError("--ui requires Windows and a Release build of AlexaDesktop.")
-                ui_env = dict(env, ALEXA_UI_CAPTURE_DIR=str(ROOT / "artifacts" / "ui"))
-                ui = subprocess.run(["dotnet", str(DESKTOP), "--ui-smoke"], cwd=ROOT, env=ui_env,
+                capture = ROOT / "artifacts" / "ui" / ("package" if options.package_root else "source")
+                ui_env = dict(env, ALEXA_UI_CAPTURE_DIR=str(capture))
+                ui = subprocess.run(["dotnet", str(desktop_dll), "--ui-smoke"], cwd=work, env=ui_env,
                                     capture_output=True, text=True, timeout=90, check=False)
                 print(ui.stdout, end="")
                 if ui.stderr:

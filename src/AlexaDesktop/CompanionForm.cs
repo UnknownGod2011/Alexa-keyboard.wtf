@@ -1,5 +1,6 @@
 using AlexaClient;
 using ModelContextProtocol;
+using System.Text.Json;
 
 namespace AlexaDesktop;
 
@@ -110,6 +111,7 @@ public sealed class CompanionForm : Form
             _currentTask = RunOperationAsync(ConnectAsync);
         };
         FormClosing += OnClosing;
+        _history.SizeChanged += (_, _) => ResizeCards();
         SetBusy(false);
     }
 
@@ -147,7 +149,14 @@ public sealed class CompanionForm : Form
                 AddCard("Approval", "If desktop launches are enabled, approve or deny this individual request in the server console. Cancel request stops waiting; a completed Windows launch cannot be undone.", Muted);
             _status.Text = "Executing · " + tool;
             var result = await _bridge.CallAsync(tool, arguments, ct);
-            AddCard(tool + (result.IsError == true ? " · denied or failed" : " · completed"), BridgeConnection.Text(result), result.IsError == true ? Color.Salmon : Accent);
+            var text = BridgeConnection.Text(result);
+            if (result.IsError != true && command == ManualCommand.Load)
+            {
+                using var handoff = JsonDocument.Parse(text);
+                _summary.Text = handoff.RootElement.GetProperty("Summary").GetString() ?? "";
+            }
+            AddCard(tool + (result.IsError == true ? " · denied or failed" : " · completed"),
+                result.IsError == true ? text : PresentResult(tool, text), result.IsError == true ? Color.Salmon : Accent);
         });
     }
 
@@ -181,7 +190,7 @@ public sealed class CompanionForm : Form
         {
             if (!_closing) AddCard("Request cancelled or timed out", "No success was reported. Check any desktop action before retrying it.", Muted);
         }
-        catch (Exception ex) when (ex is McpException or IOException or UnauthorizedAccessException or HttpRequestException or InvalidOperationException)
+        catch (Exception ex) when (ex is McpException or IOException or UnauthorizedAccessException or HttpRequestException or InvalidOperationException or JsonException or KeyNotFoundException or FormatException)
         {
             if (!_closing) AddCard("Connection or request failed", ex.Message + Environment.NewLine + "Start the bridge as the same OS user, then reconnect. Its local credential rotates on restart.", Color.Salmon);
             if (_bridge is not null) { await _bridge.DisposeAsync(); _bridge = null; }
@@ -227,6 +236,24 @@ public sealed class CompanionForm : Form
         }
     }
 
+    private static string PresentResult(string tool, string text)
+    {
+        if (tool is not ("get_desktop_status" or "load_task_handoff")) return text;
+        using var document = JsonDocument.Parse(text);
+        var data = document.RootElement;
+        if (tool == "load_task_handoff")
+            return $"{data.GetProperty("Name").GetString()}\n\n{data.GetProperty("Summary").GetString()}\n\nSaved: {data.GetProperty("SavedAt").GetDateTimeOffset().ToLocalTime():g}";
+        var enabled = data.GetProperty("desktopActionsEnabled").GetBoolean();
+        return $"Platform: {data.GetProperty("platform").GetString()}\nDesktop launches: {(enabled ? "enabled, with approval for each request" : "disabled by the server operator")}\n\nYour task handoffs stay on this computer. No AI key is required.";
+    }
+
+    private void ResizeCards()
+    {
+        var width = Math.Max(300, _history.ClientSize.Width - 85);
+        foreach (var card in _history.Controls.OfType<FlowLayoutPanel>())
+            foreach (var label in card.Controls.OfType<Label>()) label.MaximumSize = new Size(width, 0);
+    }
+
     // Exercises the actual button handlers and transport on a hosted Windows runner.
     // This is not an interactive-desktop or real Notepad-visibility assertion.
     internal async Task VerifyUiAsync()
@@ -236,15 +263,16 @@ public sealed class CompanionForm : Form
         _input.Text = "status";
         _send.PerformClick();
         await _currentTask;
-        Ensure(LastCard().Title == "get_desktop_status · completed" && LastCard().Body.Contains("platform", StringComparison.Ordinal), "status button did not return an actual tool result");
-        _name.Text = "UiSmoke" + Guid.NewGuid().ToString("N");
+        Ensure(LastCard().Title == "get_desktop_status · completed" && LastCard().Body.Contains("Platform:", StringComparison.Ordinal), "status button did not return an actual tool result");
+        _name.Text = "Development";
         _summary.Text = "Graphical simulator to MCP server round trip";
         _shortcuts[1].PerformClick();
         await _currentTask;
         Ensure(LastCard().Title == "save_task_handoff · completed", "save button failed");
+        _summary.Clear();
         _shortcuts[2].PerformClick();
         await _currentTask;
-        Ensure(LastCard().Title == "load_task_handoff · completed" && LastCard().Body.Contains(_summary.Text, StringComparison.Ordinal), "load button did not retrieve saved data");
+        Ensure(LastCard().Title == "load_task_handoff · completed" && _summary.Text == "Graphical simulator to MCP server round trip" && LastCard().Body.Contains(_summary.Text, StringComparison.Ordinal), "load button did not retrieve saved data and restore the editable summary");
 
         var directory = Environment.GetEnvironmentVariable("ALEXA_UI_CAPTURE_DIR");
         if (!string.IsNullOrWhiteSpace(directory))
@@ -254,6 +282,19 @@ public sealed class CompanionForm : Form
             using var bitmap = new Bitmap(Width, Height);
             DrawToBitmap(bitmap, new Rectangle(0, 0, Width, Height));
             bitmap.Save(Path.Combine(directory, "companion-control-render.png"), System.Drawing.Imaging.ImageFormat.Png);
+            var previousSize = Size;
+            Size = MinimumSize;
+            PerformLayout();
+            Refresh();
+            foreach (var control in new Control[] { _input, _send, _cancel, _connect, _name, _summary, _tools }.Concat(_shortcuts))
+            {
+                var bounds = RectangleToClient(control.RectangleToScreen(control.ClientRectangle));
+                Ensure(ClientRectangle.Contains(bounds), "control clipped at minimum window size: " + control.GetType().Name);
+            }
+            using var compact = new Bitmap(Width, Height);
+            DrawToBitmap(compact, new Rectangle(0, 0, Width, Height));
+            compact.Save(Path.Combine(directory, "companion-control-render-compact.png"), System.Drawing.Imaging.ImageFormat.Png);
+            Size = previousSize;
         }
 
         _name.Text = "../escape";
