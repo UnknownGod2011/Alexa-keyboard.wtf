@@ -8,8 +8,18 @@ const string Endpoint = "http://127.0.0.1:32178/mcp";
 try
 {
     using var connectTimeout = new CancellationTokenSource(TimeSpan.FromSeconds(20));
+    // Server generates this short-lived local credential automatically. Never log it.
+    var localData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+    if (string.IsNullOrWhiteSpace(localData)) throw new IOException("Local application data directory unavailable.");
+    var tokenFile = Path.Combine(localData, "AlexaKeyboardBridge", "runtime", "mcp-auth-token");
+    var localToken = File.ReadAllText(tokenFile).Trim();
+    if (localToken.Length != 64 || !localToken.All(Uri.IsHexDigit))
+        throw new IOException("Invalid local MCP authentication file. Restart the bridge.");
     await using var client = await McpClient.CreateAsync(
-        new HttpClientTransport(new HttpClientTransportOptions { Endpoint = new Uri(Endpoint) }),
+        new HttpClientTransport(new HttpClientTransportOptions {
+            Endpoint = new Uri(Endpoint),
+            AdditionalHeaders = new Dictionary<string, string> { ["Authorization"] = "Bearer " + localToken }
+        }),
         cancellationToken: connectTimeout.Token);
 
     if (args.Contains("--smoke", StringComparer.OrdinalIgnoreCase))
@@ -75,7 +85,7 @@ try
         }
     }
 }
-catch (Exception ex) when (ex is McpException or HttpRequestException or OperationCanceledException)
+catch (Exception ex) when (ex is McpException or HttpRequestException or OperationCanceledException or IOException or UnauthorizedAccessException)
 {
     Console.Error.WriteLine("Unable to connect to the local MCP server: " + ex.Message);
     Console.Error.WriteLine("Start the AlexaBridge server first, then retry.");
@@ -126,6 +136,29 @@ static async Task<int> RunSmokeAsync(McpClient client)
     Ensure(Text(invalid).Contains("Invalid input", StringComparison.Ordinal),
         "Path traversal name was not rejected.");
 
+    // Verify missing/incorrect credentials are denied BEFORE MCP handling.
+    using var unauthenticatedHttp = new HttpClient { Timeout = TimeSpan.FromSeconds(10) };
+    using (var request = new HttpRequestMessage(HttpMethod.Get, Endpoint))
+    {
+        using var response = await unauthenticatedHttp.SendAsync(request, ct);
+        Ensure(response.StatusCode == HttpStatusCode.Unauthorized,
+            "Unauthenticated MCP GET was accepted.");
+    }
+    using (var request = new HttpRequestMessage(HttpMethod.Post, Endpoint))
+    {
+        request.Content = new StringContent("{}", System.Text.Encoding.UTF8, "application/json");
+        using var response = await unauthenticatedHttp.SendAsync(request, ct);
+        Ensure(response.StatusCode == HttpStatusCode.Unauthorized,
+            "Unauthenticated MCP POST was accepted.");
+    }
+    using (var request = new HttpRequestMessage(HttpMethod.Get, Endpoint))
+    {
+        request.Headers.TryAddWithoutValidation("Authorization", "Bearer " + new string('0', 64));
+        using var response = await unauthenticatedHttp.SendAsync(request, ct);
+        Ensure(response.StatusCode == HttpStatusCode.Unauthorized,
+            "Invalid local bearer token was accepted.");
+    }
+
     // Check the existing browser-origin and DNS-rebinding defenses over HTTP.
     using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(10) };
     using (var request = new HttpRequestMessage(HttpMethod.Get, "http://127.0.0.1:32178/health"))
@@ -154,7 +187,7 @@ static async Task<int> RunSmokeAsync(McpClient client)
     }
     Ensure(rejected, "Unknown MCP tool was accepted.");
 
-    Console.WriteLine("PASS: SDK MCP initialize, discovery, status, save/load, validation, unknown tool, Host/Origin.");
+    Console.WriteLine("PASS: SDK MCP initialize, discovery, status, save/load, validation, unknown tool, local bearer authentication, Host/Origin.");
     Console.WriteLine("NOTE: No interactive Windows GUI action was attempted by this headless smoke test.");
     return 0;
 }
