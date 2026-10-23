@@ -14,10 +14,22 @@ public sealed class ConsoleActionApproval : IActionApproval
     private readonly SemaphoreSlim _gate = new(1, 1);
     private volatile Pending? _pending;
     private readonly bool _interactive;
+    private readonly TextReader _input;
+    private readonly TextWriter _output;
+    private readonly TimeSpan _timeout;
+    private volatile bool _inputEnded;
 
     public ConsoleActionApproval(bool denyActions)
+        : this(Console.In, Console.Out, !denyActions && Environment.UserInteractive && !Console.IsInputRedirected, TimeSpan.FromSeconds(30))
+    { }
+
+    // In-process test seam only. There is no network argument or environment bypass for approval.
+    internal ConsoleActionApproval(TextReader input, TextWriter output, bool interactive, TimeSpan timeout)
     {
-        _interactive = !denyActions && Environment.UserInteractive && !Console.IsInputRedirected;
+        _input = input;
+        _output = output;
+        _timeout = timeout;
+        _interactive = interactive;
         if (_interactive)
             new Thread(ReadConsole) { IsBackground = true, Name = "Local action approval" }.Start();
     }
@@ -25,14 +37,15 @@ public sealed class ConsoleActionApproval : IActionApproval
     public async Task<bool> ApproveAsync(string action, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        if (!_interactive || !await _gate.WaitAsync(0, cancellationToken)) return false;
+        if (!_interactive || _inputEnded || !await _gate.WaitAsync(0, cancellationToken)) return false;
         var pending = new Pending(Convert.ToHexString(RandomNumberGenerator.GetBytes(6)),
             new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously));
         try
         {
             _pending = pending;
-            Console.WriteLine($"\nLOCAL APPROVAL: {action}\nType approve {pending.Code} within 30 seconds, or deny {pending.Code}.\nEach approval applies to this request only.");
-            try { return await pending.Completion.Task.WaitAsync(TimeSpan.FromSeconds(30), cancellationToken); }
+            if (_inputEnded) return false;
+            _output.WriteLine($"\nLOCAL APPROVAL: {action}\nType approve {pending.Code} within {_timeout.TotalSeconds:g} seconds, or deny {pending.Code}.\nEach approval applies to this request only.");
+            try { return await pending.Completion.Task.WaitAsync(_timeout, cancellationToken); }
             catch (TimeoutException) { return false; }
         }
         finally
@@ -46,7 +59,7 @@ public sealed class ConsoleActionApproval : IActionApproval
     {
         try
         {
-            while (Console.ReadLine() is { } line)
+            while (_input.ReadLine() is { } line)
             {
                 var pending = _pending;
                 if (pending is null) continue;
@@ -56,6 +69,11 @@ public sealed class ConsoleActionApproval : IActionApproval
                     pending.Completion.TrySetResult(false);
             }
         }
-        catch (IOException) { _pending?.Completion.TrySetResult(false); }
+        catch (IOException) { }
+        finally
+        {
+            _inputEnded = true;
+            _pending?.Completion.TrySetResult(false);
+        }
     }
 }

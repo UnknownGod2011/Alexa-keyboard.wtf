@@ -13,6 +13,10 @@ A standalone Windows companion that exposes a small set of desktop capabilities 
 - Windows Notepad launch: disabled by default, requires operator opt-in and a fresh approval in the server console for each request.
 - Validation and storage failures return MCP tool errors; no simulated success responses.
 
+![Windows companion control render](docs/images/companion-windows.png)
+
+*Actual Windows control render from CI after genuine MCP status/save/load calls. This is not proof of end-user desktop or Alexa cloud connectivity.*
+
 The original [keyboard.wtf](https://github.com/UnknownGod2011/keyboard.wtf) application is separate and is not required.
 
 ## Prerequisites

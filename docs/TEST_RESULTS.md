@@ -96,3 +96,13 @@ A new hosted graphical-control smoke now exercises actual form button handlers t
 - The real extracted-package launcher succeeded from a path with spaces, performed a genuine status MCP call, stopped its owned server, and removed its token.
 - All PowerShell entrypoints parsed. Package publication included dependency inventory, package metadata, available notices and preserved upstream license texts.
 - Follow-up audit added owner-process matching for shutdown, refusal testing for a foreign listener, console input/deadline separation and robust graphical connection cleanup. These small follow-ups await CI.
+
+## Owner-aware shutdown and lifecycle audit
+
+- Commit: 43b7a33f4f07e1bb7a689ff1a742ecb041bcc02d
+- Windows CI: [39990145822](https://github.com/UnknownGod2011/Alexa-keyboard.wtf/actions/runs/39990145822), **success**.
+- Source and published package protocol/graphical checks passed.
+- Shutdown rejected a mismatched process owner. The extracted launcher refused a foreign listener without starting a bridge, and still cleaned up its own normal session.
+- Console user input no longer consumes the network-call deadline; graphical disconnect/close cleanup is bounded and idempotent.
+
+Approval-lifecycle follow-up adds direct service tests (in-memory local console input, no remote bypass): fresh approval, consumed/expired/cancelled challenge replay, concurrent requests, explicit denial and closed-input denial. This follow-up is pending CI at this checkpoint.
