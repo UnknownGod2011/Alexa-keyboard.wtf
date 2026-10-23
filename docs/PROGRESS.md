@@ -1,5 +1,18 @@
 # Progress
 
+## Current checkpoint — 2026-10-23
+
+- Work is integrated into `codex/alexa-plus-completion` by PR #3, merge commit `15122e6c545b6de8c7e0ec514e16c6c6f6ec6992`.
+- Functional head `6d2f6089fa030d905210af287fc7ea0a24e5427a` passed Windows CI [39991652332](https://github.com/UnknownGod2011/Alexa-keyboard.wtf/actions/runs/39991652332): all builds, raw MCP 2025-11-25, SDK calls, source/published graphical controls, compact layout, **52** regressions, strict binding under conflicting host configuration, script parsing, extracted-package launcher, foreign-listener refusal, owner-aware shutdown and preview packaging.
+- Local preview works without an AI key. The genuine control renders were visually inspected. A prior preview archive was inspected: required launch/runtime/notice files were present, dependency metadata was non-empty, and no credential files were found.
+- `main` remains unchanged and PR #2 stays draft. Production keyboard.wtf was read only. This is not a final release or verified Alexa cloud integration.
+- The existing recurring task remains enabled every 310 minutes; its preceding engineering run completed. No duplicate task was created.
+- **Next implementation:** approved development-workspace restoration through the same MCP/policy path. If no interactive Windows desktop exists, record that limitation and continue independent implementation rather than repeating environment investigations.
+- **External verification still needed:** real end-user Windows Notepad visibility/consent UX and Windows 10/11 desktop behavior. Hosted graphical control tests do not prove these.
+- Optional AI/voice and actual remote Alexa+ pairing/connectivity are unfinished. See RELEASE_READINESS.md.
+
+## Engineering history
+
 2026-10-23: Initialized an isolated Alexa development branch and committed the initial MCP bridge. The original keyboard.wtf repository remains read-only.
 
 2026-10-23: Added an independent .NET no-key console simulator using the official MCP SDK, plus a Windows CI integration test that starts the actual bridge and exercises it through Streamable HTTP.

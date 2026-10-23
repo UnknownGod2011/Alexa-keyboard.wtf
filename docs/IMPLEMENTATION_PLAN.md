@@ -1,25 +1,21 @@
 # Implementation plan
 
-Production UnknownGod2011/keyboard.wtf is strictly read-only. All changes belong to this repository.
+Production UnknownGod2011/keyboard.wtf is strictly read-only. All writes belong to this repository. Continue from the development branch and current checkpoint in PROGRESS.md; do not rebuild the architecture from scratch.
 
-## Implemented foundation
+## Verified foundation
 
-- Official-SDK Streamable HTTP bridge and independent no-key MCP clients.
-- Per-start local credential and single-instance token lease.
-- Operator opt-in plus per-request host-console approval for Notepad.
-- MCP tool errors, validated atomic handoff storage, cancellation before launch.
-- Console and newly implemented Windows Forms simulators share authenticated transport.
-- Windows CI validates protocol, permissions, persistence and compilation.
+- Official-SDK Streamable HTTP bridge; independent raw client verified MCP 2025-11-25.
+- Per-start credential, same-user discovery, token lease/rotation, fixed loopback endpoint independent of inherited configuration.
+- Operator opt-in plus expiring per-request host approval; challenge replay, cancellation and closed-input denial tested.
+- Truthful MCP errors, validated atomic handoff storage and cancellation before commits/launch.
+- Shared authenticated client; console and Windows Forms simulators; source and published GUI-control tests and inspected renders.
+- Windows preview package, dependency notices/inventory, extracted launcher from a path with spaces, ownership-aware cleanup and 52 regression checks.
 
-## Next steps
+## Next implementation priorities
 
-1. Verify current combined-policy and GUI changes in CI; fix failures.
-2. Complete interactive Windows manual checks (visible UI, approval/denial, cancellation, Notepad visibility, restart and shutdown).
-3. Package a reproducible preview without secrets; test the package on Windows.
-4. Add meaningful approved workspace restoration through the same permission/MCP path.
-5. Optional AI/voice only after the no-key path is stable.
-6. Review release gates, integrate validated code into main, and avoid claiming unverified cloud Alexa connectivity.
+1. Add meaningful development-workspace restoration. Keep host-approved roots, versioned saved workspace records and narrowly allowlisted actions; MCP callers must never choose arbitrary shell commands or bypass the policy/approval services. Add focused unit/protocol tests and keep handoff behavior intact.
+2. Perform WINDOWS_MANUAL_TEST.md on an actual supported end-user Windows desktop when available: consent, Notepad visibility, cancellation, restart, high-DPI behavior and shutdown.
+3. Add optional user-configured conversational AI/voice only while the deterministic no-key mode remains usable. Never commit keys or present fabricated model output.
+4. Review all release gates and fresh Windows usability before promoting a finished application to main. Production Alexa+ requires separate authenticated registration/pairing/networking and real external verification.
 
-Use docs/PROGRESS.md, docs/TEST_RESULTS.md and docs/RELEASE_READINESS.md for evidence. Retain concurrent worker changes and never force-push.
-
-If a future run has no interactive desktop, record that limitation once and continue independent approved-workspace or optional-provider work. Do not repeatedly investigate the same environmental blocker or imply that hosted control rendering verifies actual end-user Notepad visibility.
+If an interactive desktop is unavailable, record the blocker once and continue independent workspace/provider engineering. Hosted control rendering is not a substitute for real end-user Notepad verification. Preserve concurrent changes, reconcile the latest branch head before writing, and never force-push.

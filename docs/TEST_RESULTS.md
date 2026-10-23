@@ -114,3 +114,29 @@ Approval-lifecycle follow-up adds direct service tests (in-memory local console 
 - Direct host-approval service checks passed for fresh approval, consumed/cancelled/expired challenge replay, concurrency, denial, cancellation and console EOF.
 - Source and published protocol/graphical checks, script validation, extracted launcher behavior and package generation stayed green.
 - Final binding audit adds a conflicting-inherited-configuration test and explicit loopback endpoint loading; current CI pending.
+
+## Final functional validation before development integration
+
+- Functional head: `6d2f6089fa030d905210af287fc7ea0a24e5427a`.
+- CI: [39991652332](https://github.com/UnknownGod2011/Alexa-keyboard.wtf/actions/runs/39991652332), **success**.
+- All source builds, raw MCP 2025-11-25 and SDK smoke tests, source and published Windows graphical button/MCP and compact-layout tests passed.
+- **52** regression checks passed, including approval challenge replay/expiry/cancellation/EOF and Windows case-insensitive handoff lookup.
+- Conflicting inherited ASP.NET/Kestrel settings could not change the single loopback endpoint.
+- PowerShell parsing, the actual published package, extracted-package launch from a folder with spaces, foreign-listener refusal, owned-process shutdown and credential cleanup all passed.
+- Preview artifact generation/upload passed. A downloaded earlier archive was inspected for required files, dependency/license metadata and credential-file absence.
+- PR #3 merged into the development branch at `15122e6c545b6de8c7e0ec514e16c6c6f6ec6992`; integration/documentation CI is tracked separately by GitHub.
+
+Commands exercised in CI:
+
+```powershell
+dotnet build src/AlexaBridge/AlexaBridge.csproj -c Release --no-restore
+dotnet build src/AlexaSimulator/AlexaSimulator.csproj -c Release --no-restore
+dotnet build src/AlexaDesktop/AlexaDesktop.csproj -c Release
+python scripts/run-protocol-smoke.py --ui
+dotnet run --project tests/AlexaBridge.Checks/AlexaBridge.Checks.csproj -c Release
+./scripts/package-windows.ps1
+python scripts/run-protocol-smoke.py --package-root artifacts/windows-preview --ui
+python scripts/test-windows-launcher.py --package-root artifacts/windows-preview
+```
+
+No actual end-user Notepad visibility, Windows 10/11 interactive desktop or production Alexa+ connectivity is claimed. All launch-adapter regression tests use a recording adapter and all protocol hosts deny desktop launches.
