@@ -97,6 +97,8 @@ static async Task<int> RunSmokeAsync(McpClient client)
     var ct = timeout.Token;
     var tools = await client.ListToolsAsync(cancellationToken: ct);
     var names = tools.Select(tool => tool.Name).ToHashSet(StringComparer.Ordinal);
+    Console.WriteLine("Discovered MCP tools: " + string.Join(", ", names.OrderBy(name => name)));
+
     foreach (var expected in new[] { "GetDesktopStatus", "OpenNotepad", "SaveTaskHandoff", "LoadTaskHandoff" })
         Ensure(names.Contains(expected), "Missing MCP tool: " + expected);
 

@@ -15,3 +15,7 @@
 - Authentication and session hardening.
 - Actual Alexa+ cloud connectivity.
 - Fresh clone setup outside CI.
+
+## First protocol CI attempt
+- Run 39976573545 compiled the server and simulator successfully, but the smoke test failed at tool discovery: GetDesktopStatus was absent. No tool execution was validated in that run.
+- Corrective change: pass typeof(DesktopTools).Assembly explicitly to WithToolsFromAssembly and log discovered names. Verify the next CI run before claiming resolution.

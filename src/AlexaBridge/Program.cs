@@ -7,7 +7,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.WebHost.UseUrls("http://127.0.0.1:32178");
 builder.Services.AddMcpServer()
     .WithHttpTransport()
-    .WithToolsFromAssembly();
+    .WithToolsFromAssembly(typeof(DesktopTools).Assembly);
 
 var app = builder.Build();
 app.Use(async (context, next) =>
