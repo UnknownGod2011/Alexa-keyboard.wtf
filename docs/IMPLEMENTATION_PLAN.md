@@ -13,7 +13,7 @@ Production UnknownGod2011/keyboard.wtf is strictly read-only. All writes belong 
 
 ## Next implementation priorities
 
-1. Complete and verify `codex/optional-ai-chat`. Approved workspace restoration is integrated by PR #4 with 86 passing checks. Optional AI must remain explicit opt-in, bounded, credential-safe and unable to execute desktop actions. Verify fake-HTTP contracts and hosted no-key GUI behavior before integration; keep credential-backed validation explicitly unverified.
+1. Complete and verify `codex/optional-windows-voice`. Workspaces and optional text AI are integrated by PRs #4/#5, with 114 passing regression/HTTP checks. Keep dictation transcript review separate from Send, microphone/speech disabled until explicit clicks, cancellation and typed fallback. Hosted adapters cannot establish actual audio hardware behavior.
 2. Perform WINDOWS_MANUAL_TEST.md on an actual supported end-user Windows desktop when available: consent, Notepad visibility, cancellation, restart, high-DPI behavior and shutdown.
 3. Complete optional AI credential-backed verification and add optional voice only while the deterministic no-key mode remains usable. Never commit keys or present fabricated model output.
 4. Review all release gates and fresh Windows usability before promoting a finished application to main. Production Alexa+ requires separate authenticated registration/pairing/networking and real external verification.

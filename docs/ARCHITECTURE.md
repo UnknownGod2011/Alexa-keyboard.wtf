@@ -25,3 +25,7 @@ Real remote Alexa+ pairing and cloud connectivity remain outside the verified lo
 ## Optional AI text boundary
 
 AlexaClient also contains an explicitly configured Responses client. Only `ask` input enters it; unknown text never implicitly sends a cloud request. It sends explicit ask/reply history with a bounded context, `store=false`, no tools, a deadline, no redirects and no automatic retries. It holds credentials only in client memory from the process environment. Provider errors discard raw bodies. It does not receive BridgeConnection, MCP credentials, saved fields or tool results, and its output is displayed without command routing. `ai reset` clears its in-memory history. Hosted tests use an in-memory HTTP adapter and explicitly disable real AI for GUI smoke.
+
+## Optional Windows speech boundary
+
+The graphical client creates native recognition/synthesis objects only inside explicit Dictate/Read last operations. Recognition uses one phrase and a 15-second deadline. Its result updates input, never command routing; Send remains a separate user action. Reading is explicit and limited to 500 characters of displayed text. Request/lifetime cancellation flows into speech cleanup. No microphone/audio capability is exposed by MCP or the AI client. Hosted checks inject RecordingVoice; actual SAPI devices remain an interactive verification gate.

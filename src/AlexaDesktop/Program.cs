@@ -6,8 +6,9 @@ internal static class Program
     private static void Main(string[] args)
     {
         ApplicationConfiguration.Initialize();
-        using var form = new CompanionForm();
-        if (args.Contains("--ui-smoke", StringComparer.Ordinal))
+        var smoke = args.Contains("--ui-smoke", StringComparer.Ordinal);
+        using var form = smoke ? new CompanionForm(new RecordingVoice()) : new CompanionForm();
+        if (smoke)
         {
             form.Shown += async (_, _) =>
             {
@@ -15,7 +16,7 @@ internal static class Program
                 {
                     await form.VerifyUiAsync();
                     Console.WriteLine("PASS: graphical control events, authenticated MCP discovery/status/save/load/errors/reconnect and control rendering.");
-                    Console.WriteLine("NOTE: hosted control rendering does not verify an interactive user desktop or visible Notepad launch.");
+                    Console.WriteLine("NOTE: hosted controls use a recording voice adapter; they do not verify microphone/speaker behavior, an interactive desktop or visible Notepad launch.");
                 }
                 catch (Exception ex)
                 {

@@ -152,3 +152,11 @@ No actual end-user Notepad visibility, Windows 10/11 interactive desktop or prod
 - Actual GUI save-dialog handler, load, denied restore and policy query passed for source and published DLLs. Dialog and compact-window bounds passed. Actual renders were inspected.
 - Package build, PowerShell parsing, extracted launcher from a path with spaces, foreign-listener refusal and owned shutdown passed.
 - PR #4 merged into development at `f0f6c5ab3a7abeab510dbc27a3bd25e37d05a4ad`. End-user Explorer/Notepad visibility remains unverified.
+
+
+## Explicit optional AI text
+
+- Functional `4f1f166aeb2489ae3e5a188785bcceaf085e748f`; Windows [40016028105](https://github.com/UnknownGod2011/Alexa-keyboard.wtf/actions/runs/40016028105), **success**.
+- **114** checks include request arguments/auth, no tool capability, explicit prompt routing, history/reset/bounds, redacted errors, failed/cancelled history isolation, partial/refusal parsing, malformed/empty/oversized responses with and without Content-Length, no retries and in-flight cancellation. These use an in-memory HTTP adapter, not a paid provider request.
+- Source/published real MCP and GUI tests passed with cloud AI explicitly disabled. Disabled-AI status/errors preserved the authenticated MCP session. Standalone chat-only console worked before bridge startup, with no bridge credentials. Package, script and launcher checks passed.
+- PR #5 merged to development at `60be1c33f583d937cde2291ce2827f8ae7b5c5f9`. Credential-backed provider behavior remains unverified.
