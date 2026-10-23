@@ -111,6 +111,15 @@ internal static class WorkspaceChecks
                 "approved root cannot itself be a junction or symbolic link");
         }
         finally { Directory.Delete(alias); }
+        // The directory may change while a human is reading the approval prompt.
+        var beforeChangedFolder = folder.Calls;
+        var beforeChangedNotepad = notepad.Calls;
+        approval.AfterApproval = () => Directory.Move(project, project + "-moved");
+        var changedDuringApproval = await Tools().RestoreWorkspace("Development", default);
+        check(changedDuringApproval.IsError == true && folder.Calls == beforeChangedFolder && notepad.Calls == beforeChangedNotepad,
+            "directory removed during approval is revalidated before either launch");
+        approval.AfterApproval = null;
+        Directory.Move(project + "-moved", project);
         Directory.Delete(project);
         check((await Tools().RestoreWorkspace("Development", default)).IsError == true, "removed project directory is rejected before approval");
     }

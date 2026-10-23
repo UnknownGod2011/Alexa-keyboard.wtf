@@ -16,7 +16,7 @@ public static class ManualCommands
         "workspace policy" => ManualCommand.WorkspacePolicy,
         "save workspace" => ManualCommand.SaveWorkspace,
         "load workspace" => ManualCommand.LoadWorkspace,
-        "restore workspace" or "restore my development workspace" => ManualCommand.RestoreWorkspace,
+        "restore workspace" => ManualCommand.RestoreWorkspace,
         _ => ManualCommand.Help
     };
 }
