@@ -23,3 +23,9 @@ Source of truth: the current GitHub branch. Original production repository `Unkn
 ## Release gate
 
 Do not call this release-ready until access control, real desktop UI, interactive Windows validation, robust tests, and reproducible packaging are complete.
+
+## Interactive-session continuation
+
+- Retain the per-start token/file lease from the scheduled worker.
+- Validate new server-console approval, cancellation, MCP error semantics, and handoff storage through Windows CI.
+- Next: graphical MCP simulator, trustworthy desktop smoke procedure, and reproducible distribution. Do not merge to main while interactive Windows behavior and the remaining release gates are unverified.

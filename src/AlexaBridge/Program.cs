@@ -5,7 +5,10 @@ using ModelContextProtocol.Server;
 // Rotate a cryptographically random same-user bearer token on server startup.
 // No AI key or user-supplied configuration is required.
 using var localAccess = LocalMcpAccess.Create();
-var builder = WebApplication.CreateBuilder(args);
+var builder = WebApplication.CreateBuilder(args.Where(a => a != "--deny-actions").ToArray());
+builder.Services.AddSingleton(new HandoffStore(HandoffStore.DefaultRoot()));
+builder.Services.AddSingleton<IActionApproval>(new ConsoleActionApproval(args.Contains("--deny-actions", StringComparer.Ordinal)));
+builder.Services.AddSingleton<INotepadLauncher, NotepadLauncher>();
 // Never inherit ASP.NET's default wildcard binding: this controls a desktop.
 builder.WebHost.UseUrls("http://127.0.0.1:32178");
 builder.Services.AddMcpServer()

@@ -8,6 +8,7 @@ DesktopTools directly.
 from __future__ import annotations
 
 import pathlib
+import os
 import subprocess
 import sys
 import tempfile
@@ -26,12 +27,15 @@ def main() -> int:
         print("Build both projects in Release configuration first.", file=sys.stderr)
         return 2
 
-    with tempfile.TemporaryFile(mode="w+t", encoding="utf-8") as log:
+    with tempfile.TemporaryDirectory(prefix="alexa-mcp-smoke-") as data, tempfile.TemporaryFile(mode="w+t", encoding="utf-8") as log:
+        env = dict(os.environ, ALEXA_BRIDGE_DATA_DIR=data)
         server = subprocess.Popen(
-            ["dotnet", str(SERVER)],
+            ["dotnet", str(SERVER), "--deny-actions"],
             cwd=ROOT,
             stdout=log,
             stderr=subprocess.STDOUT,
+            env=env,
+            stdin=subprocess.DEVNULL,
         )
         try:
             for _ in range(60):
@@ -53,6 +57,7 @@ def main() -> int:
                 text=True,
                 timeout=90,
                 check=False,
+                env=env,
             )
             print(result.stdout, end="")
             if result.stderr:

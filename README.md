@@ -2,7 +2,7 @@
 
 An independent Windows-oriented companion exposing a small, safe subset of desktop actions through the Model Context Protocol (MCP). This project is inspired by the original [keyboard.wtf](https://github.com/UnknownGod2011/keyboard.wtf), but runs separately and does not require the original application to be installed.
 
-**Status:** early functional prototype. A real MCP client/server round-trip has passed automated Windows CI, but the interactive Windows desktop, GUI, per-action server-side approval, and production Alexa+ integration have **not** been verified or completed. This is not an official Amazon Alexa application.
+**Status:** early functional prototype. A real MCP client/server round-trip has passed automated Windows CI, but the interactive Windows desktop, GUI, and production Alexa+ integration remain unverified or unfinished. Server-side launch approval and stronger validation are implemented on this branch; see CI for verification status. This is not an official Amazon Alexa application.
 
 ## Features available now
 
@@ -10,7 +10,7 @@ An independent Windows-oriented companion exposing a small, safe subset of deskt
 - **Automatic local bearer authentication:** each server startup creates a fresh random 256-bit credential in the current user's local application data. The included simulator reads it automatically, without a cloud account or API key.
 - **No-key console simulator:** a separate .NET MCP client that discovers tools and calls them over HTTP; no AI account required.
 - **Desktop status:** reports non-sensitive process/platform information.
-- **Open Notepad:** asks for explicit confirmation in the console before requesting a Windows process launch. A returned PID does not prove a visible window. Other authenticated MCP clients can still invoke it without that console confirmation; server-side user approval remains a priority.
+- **Open Notepad:** requires fresh approval in the server's console for every launch. Clients cannot grant approval through MCP arguments. Headless hosts deny launches. A returned PID does not prove a visible window.
 - **Task handoffs:** save and load bounded, named task summaries from local application data.
 - **Automated protocol smoke:** starts server and client in separate processes, checks initialization, discovery, real tool calls, input rejection, unknown tools, local bearer authorization, and HTTP Host/Origin defenses.
 
@@ -45,7 +45,7 @@ dotnet run --project src/AlexaBridge/AlexaBridge.csproj
 dotnet run --project src/AlexaSimulator/AlexaSimulator.csproj
 ```
 
-Type `tools` to discover the actual MCP tools, `status` for a safe read-only action, `save` to record a non-sensitive task summary, and `load` to retrieve it. Type `notepad` to request a Windows Notepad launch after a local console confirmation. Type `quit` to close the simulator; stop the server in Terminal 1 with Ctrl+C.
+Type `tools` to discover the actual MCP tools, `status` for a safe read-only action, `save` to record a non-sensitive task summary, and `load` to retrieve it. Type `notepad` to request a Windows Notepad launch. In Terminal 1, type the exact `approve <code>` shown by the server within 30 seconds, or `deny <code>` to reject it. Each code is valid for one pending request. Closing, cancelling, or timing out a request does not grant permission to a later request. Type `quit` to close the simulator; stop the server in Terminal 1 with Ctrl+C.
 
 The simulator is a **console application**, not yet a graphical or voice assistant. It uses the real MCP client transport and does not call desktop methods directly.
 
@@ -68,9 +68,10 @@ Build both projects in Release mode:
 dotnet build src/AlexaBridge/AlexaBridge.csproj -c Release
 dotnet build src/AlexaSimulator/AlexaSimulator.csproj -c Release
 python scripts/run-protocol-smoke.py
+dotnet run --project tests/AlexaBridge.Checks/AlexaBridge.Checks.csproj -c Release
 ```
 
-The smoke script starts the real server, waits for readiness, invokes the independent official-SDK client, and stops the server. It does not launch Notepad, require API credentials, or prove a visible Windows UI.
+The smoke script starts the real server, waits for readiness, invokes the independent official-SDK client, and stops the server. It calls `open_notepad` against a headless server to verify denial without launching Notepad. It uses a temporary handoff directory, requires no API credentials, and does not prove a visible Windows UI. The separate regression checks use a recording launcher to test approval and cancellation without desktop side effects.
 
 The Windows GitHub Actions workflow passed this protocol smoke on commit `c9c8a4a`: [workflow run 39977136792](https://github.com/UnknownGod2011/Alexa-keyboard.wtf/actions/runs/39977136792). See [test evidence](docs/TEST_RESULTS.md).
 
@@ -91,7 +92,7 @@ The server binds only to `127.0.0.1:32178`, checks Host and Origin headers, and 
 
 The server requires a per-start random local bearer token for all MCP methods, in addition to loopback binding and Host/Origin checks. The token is stored under the current user's local application data directory, protected by its inherited OS permissions (and explicit Unix file mode on Unix). **This does not protect against malicious processes running as the same OS user**, which can read the token. Do not tunnel, proxy, or expose this endpoint to the public Internet. Only run it on a computer you trust.
 
-Saved task summaries are stored as **plaintext** under the current user's local application data directory; never store credentials or sensitive content. Other authenticated MCP clients can call `open_notepad` without the simulator's interactive confirmation. Stronger **server-enforced per-action approval** is required before adding more powerful desktop actions.
+Saved task summaries are stored as **plaintext** under the current user's local application data directory; never store credentials or sensitive content. Authenticated clients can save small task summaries in the dedicated handoff directory. Invalid names, corrupt records, unsupported versions, and persistence failures return MCP tool errors. `open_notepad` requires approval in the server console, independently of the requesting client. Start the server with `-- --deny-actions` to explicitly disable desktop launches (also enforced when standard input is redirected). Cancellation before launch prevents it; once Windows has accepted a launch, cancellation cannot undo it.
 
 ## Optional AI and Alexa+ integration
 

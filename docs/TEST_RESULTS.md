@@ -24,3 +24,9 @@
 - GUI simulator and voice.
 - Production Alexa+ connectivity.
 - Fresh-clone installation outside CI.
+
+## Server-side approval and handoff regression checks
+
+Implemented in the interactive Work session; Windows CI is pending at this checkpoint. The check executable covers denied/approved/cancelled adapter execution, unsupported platforms, launch errors, name validation, cancellation preserving saved data, corrupt/mismatched/oversized/versioned records, and concurrent atomic saves. It uses a recording adapter and does not prove visible Windows behavior.
+
+Local checks actually run: Python smoke-script compilation and git whitespace/diff validation passed. Local .NET CLI/MSBuild failed before building because the runtime could not query process information in the execution environment. No local .NET pass is claimed.

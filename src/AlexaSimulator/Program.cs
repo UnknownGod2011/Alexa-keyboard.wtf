@@ -18,6 +18,7 @@ try
     await using var client = await McpClient.CreateAsync(
         new HttpClientTransport(new HttpClientTransportOptions {
             Endpoint = new Uri(Endpoint),
+            TransportMode = HttpTransportMode.StreamableHttp,
             AdditionalHeaders = new Dictionary<string, string> { ["Authorization"] = "Bearer " + localToken }
         }),
         cancellationToken: connectTimeout.Token);
@@ -39,7 +40,7 @@ try
         if (string.IsNullOrEmpty(command)) continue;
         try
         {
-            using var callTimeout = new CancellationTokenSource(TimeSpan.FromSeconds(20));
+            using var callTimeout = new CancellationTokenSource(TimeSpan.FromSeconds(40));
             switch (command)
             {
                 case "tools":
@@ -68,11 +69,8 @@ try
                     }, cancellationToken: callTimeout.Token));
                     break;
                 case "notepad":
-                    Console.Write("Launch Notepad on this PC? Type YES to confirm: ");
-                    if (Console.ReadLine() == "YES")
-                        Print(await client.CallToolAsync("open_notepad", cancellationToken: callTimeout.Token));
-                    else
-                        Console.WriteLine("Cancelled; no action requested.");
+                    Console.WriteLine("Requesting Notepad. Approve or deny this request in the server console.");
+                    Print(await client.CallToolAsync("open_notepad", cancellationToken: callTimeout.Token));
                     break;
                 default:
                     Console.WriteLine("Unknown command. Use: tools, status, save, load, notepad, quit");
@@ -133,8 +131,15 @@ static async Task<int> RunSmokeAsync(McpClient client)
     var invalid = await client.CallToolAsync("save_task_handoff",
         new Dictionary<string, object?> { ["name"] = "../escape", ["summary"] = "reject" },
         cancellationToken: ct);
-    Ensure(Text(invalid).Contains("Invalid input", StringComparison.Ordinal),
+    Ensure(invalid.IsError == true && Text(invalid).Contains("Invalid input", StringComparison.Ordinal),
         "Path traversal name was not rejected.");
+
+    var missingHandoff = await client.CallToolAsync("load_task_handoff",
+        new Dictionary<string, object?> { ["name"] = "Missing" + Guid.NewGuid().ToString("N") }, cancellationToken: ct);
+    Ensure(missingHandoff.IsError == true, "Missing handoff was incorrectly reported as success.");
+
+    var deniedLaunch = await client.CallToolAsync("open_notepad", cancellationToken: ct);
+    Ensure(deniedLaunch.IsError == true, "Headless launch must fail without server-side user approval.");
 
     // Verify missing/incorrect credentials are denied BEFORE MCP handling.
     using var unauthenticatedHttp = new HttpClient { Timeout = TimeSpan.FromSeconds(10) };
@@ -157,6 +162,12 @@ static async Task<int> RunSmokeAsync(McpClient client)
         using var response = await unauthenticatedHttp.SendAsync(request, ct);
         Ensure(response.StatusCode == HttpStatusCode.Unauthorized,
             "Invalid local bearer token was accepted.");
+    }
+
+    using (var request = new HttpRequestMessage(HttpMethod.Delete, Endpoint))
+    {
+        using var response = await unauthenticatedHttp.SendAsync(request, ct);
+        Ensure(response.StatusCode == HttpStatusCode.Unauthorized, "Unauthenticated MCP DELETE was accepted.");
     }
 
     // Check the existing browser-origin and DNS-rebinding defenses over HTTP.
@@ -187,7 +198,7 @@ static async Task<int> RunSmokeAsync(McpClient client)
     }
     Ensure(rejected, "Unknown MCP tool was accepted.");
 
-    Console.WriteLine("PASS: SDK MCP initialize, discovery, status, save/load, validation, unknown tool, local bearer authentication, Host/Origin.");
+    Console.WriteLine("PASS: SDK MCP initialize, discovery, status, save/load, tool errors, denied launch, unknown tool, local bearer authentication GET/POST/DELETE, Host/Origin.");
     Console.WriteLine("NOTE: No interactive Windows GUI action was attempted by this headless smoke test.");
     return 0;
 }

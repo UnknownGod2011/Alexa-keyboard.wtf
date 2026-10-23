@@ -1,7 +1,7 @@
 name: Windows .NET validation
 on:
   push:
-    branches: [main, codex/alexa-plus-completion]
+    branches: [main, 'codex/**']
   pull_request:
     branches: [main]
 permissions:
@@ -28,3 +28,6 @@ jobs:
         run: dotnet build src/AlexaSimulator/AlexaSimulator.csproj --configuration Release --no-restore
       - name: Real MCP SDK client/server smoke test
         run: python scripts/run-protocol-smoke.py
+      - name: Permission, cancellation and persistence regression checks
+        run: dotnet run --project tests/AlexaBridge.Checks/AlexaBridge.Checks.csproj --configuration Release
+
