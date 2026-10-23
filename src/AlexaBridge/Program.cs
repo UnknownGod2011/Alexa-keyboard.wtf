@@ -2,6 +2,9 @@ using System.Net;
 using AlexaBridge;
 using ModelContextProtocol.Server;
 
+// Rotate a cryptographically random same-user bearer token on server startup.
+// No AI key or user-supplied configuration is required.
+using var localAccess = LocalMcpAccess.Create();
 var builder = WebApplication.CreateBuilder(args);
 // Never inherit ASP.NET's default wildcard binding: this controls a desktop.
 builder.WebHost.UseUrls("http://127.0.0.1:32178");
@@ -26,6 +29,15 @@ app.Use(async (context, next) =>
         !string.Equals(origin, "http://localhost:32178", StringComparison.OrdinalIgnoreCase))
     {
         context.Response.StatusCode = StatusCodes.Status403Forbidden;
+        return;
+    }
+    // Require authentication for every MCP request, including GET and DELETE.
+    // /health remains unauthenticated but reveals no token or private context.
+    if (context.Request.Path.StartsWithSegments("/mcp") &&
+        !localAccess.IsAuthorized(context.Request.Headers.Authorization.ToString()))
+    {
+        context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+        context.Response.Headers["WWW-Authenticate"] = "Bearer";
         return;
     }
     await next();
