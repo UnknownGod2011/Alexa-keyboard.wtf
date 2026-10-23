@@ -6,6 +6,7 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="ModelContextProtocol.Core" Version="2.3.0" />
+    <ProjectReference Include="../AlexaClient/AlexaClient.csproj" />
   </ItemGroup>
 </Project>
+

@@ -43,3 +43,74 @@
 - New assertion called `open_notepad` through MCP and verified the bridge denied it by default; the test did not open a desktop application.
 - Existing tests for bearer authentication, Host/Origin rejection, status, save/load, input validation and unknown-tool handling remained green.
 - This is **process-level operator opt-in**, not per-action on-device consent. A verified interactive Windows Notepad launch remains outstanding.
+
+## Per-request approval, error semantics and storage — 2026-10-23
+
+- Commit: 2603b3ae830510aec06dde2b7c883224104268f8
+- Windows CI: [39986017503](https://github.com/UnknownGod2011/Alexa-keyboard.wtf/actions/runs/39986017503), **success**.
+- Bridge/simulator builds, real SDK MCP smoke and regression executable passed.
+- Covered denied and approved recording-adapter launches, cancellation before launch, unsupported platform and launch failure errors, handoff validation, Unicode round-trip, cancellation preserving existing data, corrupt/mismatched/oversized/versioned records and concurrent atomic saves.
+- Smoke additionally verified missing handoffs and invalid inputs return isError, headless launch denial and unauthenticated DELETE denial.
+- Local Python compilation and diff checks passed. Local .NET CLI and MSBuild failed before building because this execution environment cannot provide the process metadata they query; no local .NET pass is claimed.
+
+## Graphical simulator and combined policy checkpoint
+
+Implemented after the preceding pass: shared client, manual command routing, graphical simulator, preservation of operator opt-in before fresh host approval. New Windows CI is pending. A graphical build does not prove visible interaction. Follow WINDOWS_MANUAL_TEST.md on an interactive Windows machine.
+
+## Shared client, graphical build and combined policy
+
+- Commit: a6372f35d59ec6208d63d98434670037451b037e
+- Windows CI: [39987052287](https://github.com/UnknownGod2011/Alexa-keyboard.wtf/actions/runs/39987052287), **success**.
+- Bridge, console, shared client and Windows Forms simulator compiled.
+- Actual SDK MCP smoke and permission/persistence/manual-routing regression executable passed.
+- This is build and headless evidence. No window layout, visible Notepad launch or production Alexa connection was tested.
+
+Newest raw HTTP, lifecycle, launcher and preview-package changes are pending the next CI run.
+
+## Independent protocol, lifecycle and packaging validation
+
+- Commit: 3e048c43a6eaa7bcf1b07673ecbb894f7d6e58d2
+- Windows CI: [39987908464](https://github.com/UnknownGod2011/Alexa-keyboard.wtf/actions/runs/39987908464), **success**.
+- Independent Python client negotiated MCP 2025-11-25 and passed initialize/notification lifecycle, exact tool inventory and schemas, concurrent calls, invalid input and protocol-error checks.
+- SDK-client smoke passed; a second server could not replace the live token; authenticated graceful shutdown exited cleanly and removed the token.
+- **40** regression checks passed, including operator policy, denied/cancelled adapter calls, persistence, token lease/rotation and command routing.
+- Bridge, shared client, console and graphical projects built with zero warnings/errors in the captured CI build logs.
+- Framework-dependent Windows preview published and uploaded as a CI artifact (64 files, about 4 MB zipped). No claim of a tested installer or actual interactive desktop launch.
+
+A new hosted graphical-control smoke now exercises actual form button handlers through MCP and captures a control-render bitmap. It remains pending CI at this checkpoint and will not establish a physical interactive desktop or real Notepad visibility.
+
+## Graphical controls over real MCP
+
+- Commit: 371cb2fc4fd91604b003b740f34386fd5919f1b8
+- Windows CI: [39988366057](https://github.com/UnknownGod2011/Alexa-keyboard.wtf/actions/runs/39988366057), **success**.
+- The Windows Forms application ran its real button handlers and authenticated transport: connection/discovery, status, save/load, error recovery, unsupported-input handling and reconnect all passed.
+- A bitmap rendered from the actual Windows controls was captured in CI and visually inspected in Work. It is a control render, not a fabricated screenshot or proof of an end-user interactive desktop.
+- Follow-up: improved result readability and summary restoration; added compact-window layout checks, published-DLL validation and extracted-package launcher tests. These follow-up changes await CI.
+
+## Published package and extracted launcher
+
+- Commit: fe949467ddcef3d6f648a74fa92222c47d31546b
+- Windows CI: [39989264504](https://github.com/UnknownGod2011/Alexa-keyboard.wtf/actions/runs/39989264504), **success**.
+- Source and published DLLs both passed raw protocol, official-SDK and graphical button/MCP checks.
+- Compact-window required controls stayed within the form bounds. Source/package control renders were captured; standard and compact source renders were visually inspected.
+- The real extracted-package launcher succeeded from a path with spaces, performed a genuine status MCP call, stopped its owned server, and removed its token.
+- All PowerShell entrypoints parsed. Package publication included dependency inventory, package metadata, available notices and preserved upstream license texts.
+- Follow-up audit added owner-process matching for shutdown, refusal testing for a foreign listener, console input/deadline separation and robust graphical connection cleanup. These small follow-ups await CI.
+
+## Owner-aware shutdown and lifecycle audit
+
+- Commit: 43b7a33f4f07e1bb7a689ff1a742ecb041bcc02d
+- Windows CI: [39990145822](https://github.com/UnknownGod2011/Alexa-keyboard.wtf/actions/runs/39990145822), **success**.
+- Source and published package protocol/graphical checks passed.
+- Shutdown rejected a mismatched process owner. The extracted launcher refused a foreign listener without starting a bridge, and still cleaned up its own normal session.
+- Console user input no longer consumes the network-call deadline; graphical disconnect/close cleanup is bounded and idempotent.
+
+Approval-lifecycle follow-up adds direct service tests (in-memory local console input, no remote bypass): fresh approval, consumed/expired/cancelled challenge replay, concurrent requests, explicit denial and closed-input denial. This follow-up is pending CI at this checkpoint.
+
+## Approval service lifecycle
+
+- Commit: b6d850f8cb2dda806380c0fee7e827c918f64669
+- Windows CI: [39990718911](https://github.com/UnknownGod2011/Alexa-keyboard.wtf/actions/runs/39990718911), **success**.
+- Direct host-approval service checks passed for fresh approval, consumed/cancelled/expired challenge replay, concurrency, denial, cancellation and console EOF.
+- Source and published protocol/graphical checks, script validation, extracted launcher behavior and package generation stayed green.
+- Final binding audit adds a conflicting-inherited-configuration test and explicit loopback endpoint loading; current CI pending.

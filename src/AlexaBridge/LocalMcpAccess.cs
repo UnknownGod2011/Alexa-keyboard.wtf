@@ -23,10 +23,7 @@ public sealed class LocalMcpAccess : IDisposable
 
     public static LocalMcpAccess Create()
     {
-        var localData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-        if (string.IsNullOrWhiteSpace(localData))
-            throw new InvalidOperationException("Local application data directory is unavailable.");
-        var directory = Path.Combine(localData, "AlexaKeyboardBridge", "runtime");
+        var directory = AlexaShared.LocalRuntime.DirectoryPath;
         Directory.CreateDirectory(directory);
         if (!OperatingSystem.IsWindows())
             File.SetUnixFileMode(directory, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);

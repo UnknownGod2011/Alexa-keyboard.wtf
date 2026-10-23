@@ -8,19 +8,8 @@ const string Endpoint = "http://127.0.0.1:32178/mcp";
 try
 {
     using var connectTimeout = new CancellationTokenSource(TimeSpan.FromSeconds(20));
-    // Server generates this short-lived local credential automatically. Never log it.
-    var localData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-    if (string.IsNullOrWhiteSpace(localData)) throw new IOException("Local application data directory unavailable.");
-    var tokenFile = Path.Combine(localData, "AlexaKeyboardBridge", "runtime", "mcp-auth-token");
-    var localToken = File.ReadAllText(tokenFile).Trim();
-    if (localToken.Length != 64 || !localToken.All(Uri.IsHexDigit))
-        throw new IOException("Invalid local MCP authentication file. Restart the bridge.");
-    await using var client = await McpClient.CreateAsync(
-        new HttpClientTransport(new HttpClientTransportOptions {
-            Endpoint = new Uri(Endpoint),
-            AdditionalHeaders = new Dictionary<string, string> { ["Authorization"] = "Bearer " + localToken }
-        }),
-        cancellationToken: connectTimeout.Token);
+    await using var connection = await AlexaClient.BridgeConnection.ConnectAsync(connectTimeout.Token);
+    var client = connection.Client;
 
     if (args.Contains("--smoke", StringComparer.OrdinalIgnoreCase))
     {
@@ -39,14 +28,17 @@ try
         if (string.IsNullOrEmpty(command)) continue;
         try
         {
-            using var callTimeout = new CancellationTokenSource(TimeSpan.FromSeconds(20));
+            // User typing does not consume the network request deadline.
+            using var callTimeout = new CancellationTokenSource();
             switch (command)
             {
                 case "tools":
+                    callTimeout.CancelAfter(TimeSpan.FromSeconds(40));
                     var tools = await client.ListToolsAsync(cancellationToken: callTimeout.Token);
                     foreach (var tool in tools) Console.WriteLine("  " + tool.Name);
                     break;
                 case "status":
+                    callTimeout.CancelAfter(TimeSpan.FromSeconds(40));
                     Print(await client.CallToolAsync("get_desktop_status", cancellationToken: callTimeout.Token));
                     break;
                 case "save":
@@ -54,6 +46,7 @@ try
                     var saveName = Console.ReadLine() ?? "";
                     Console.Write("Task summary (not sensitive data): ");
                     var summary = Console.ReadLine() ?? "";
+                    callTimeout.CancelAfter(TimeSpan.FromSeconds(40));
                     Print(await client.CallToolAsync("save_task_handoff", new Dictionary<string, object?>
                     {
                         ["name"] = saveName, ["summary"] = summary
@@ -62,17 +55,16 @@ try
                 case "load":
                     Console.Write("Session name: ");
                     var loadName = Console.ReadLine() ?? "";
+                    callTimeout.CancelAfter(TimeSpan.FromSeconds(40));
                     Print(await client.CallToolAsync("load_task_handoff", new Dictionary<string, object?>
                     {
                         ["name"] = loadName
                     }, cancellationToken: callTimeout.Token));
                     break;
                 case "notepad":
-                    Console.Write("Launch Notepad on this PC? Type YES to confirm: ");
-                    if (Console.ReadLine() == "YES")
-                        Print(await client.CallToolAsync("open_notepad", cancellationToken: callTimeout.Token));
-                    else
-                        Console.WriteLine("Cancelled; no action requested.");
+                    callTimeout.CancelAfter(TimeSpan.FromSeconds(40));
+                    Console.WriteLine("Requesting Notepad. Approve or deny this request in the server console.");
+                    Print(await client.CallToolAsync("open_notepad", cancellationToken: callTimeout.Token));
                     break;
                 default:
                     Console.WriteLine("Unknown command. Use: tools, status, save, load, notepad, quit");
@@ -116,12 +108,6 @@ static async Task<int> RunSmokeAsync(McpClient client)
     Ensure(status.IsError != true && Text(status).Contains("platform", StringComparison.Ordinal),
         "Desktop status tool returned an unexpected response.");
 
-    // CI must never launch a GUI process: default server policy denies desktop
-    // side effects until its operator explicitly opts in before server startup.
-    var launchDenied = await client.CallToolAsync("open_notepad", cancellationToken: ct);
-    Ensure(Text(launchDenied).Contains("Denied: desktop application launches", StringComparison.Ordinal),
-        "Desktop application launch was not denied by the server's default policy.");
-
     var name = "Smoke" + Guid.NewGuid().ToString("N");
     const string summary = "MCP client to server round-trip test";
     var saved = await client.CallToolAsync("save_task_handoff",
@@ -139,8 +125,15 @@ static async Task<int> RunSmokeAsync(McpClient client)
     var invalid = await client.CallToolAsync("save_task_handoff",
         new Dictionary<string, object?> { ["name"] = "../escape", ["summary"] = "reject" },
         cancellationToken: ct);
-    Ensure(Text(invalid).Contains("Invalid input", StringComparison.Ordinal),
+    Ensure(invalid.IsError == true && Text(invalid).Contains("Invalid input", StringComparison.Ordinal),
         "Path traversal name was not rejected.");
+
+    var missingHandoff = await client.CallToolAsync("load_task_handoff",
+        new Dictionary<string, object?> { ["name"] = "Missing" + Guid.NewGuid().ToString("N") }, cancellationToken: ct);
+    Ensure(missingHandoff.IsError == true, "Missing handoff was incorrectly reported as success.");
+
+    var deniedLaunch = await client.CallToolAsync("open_notepad", cancellationToken: ct);
+    Ensure(deniedLaunch.IsError == true, "Headless launch must fail without server-side user approval.");
 
     // Verify missing/incorrect credentials are denied BEFORE MCP handling.
     using var unauthenticatedHttp = new HttpClient { Timeout = TimeSpan.FromSeconds(10) };
@@ -163,6 +156,12 @@ static async Task<int> RunSmokeAsync(McpClient client)
         using var response = await unauthenticatedHttp.SendAsync(request, ct);
         Ensure(response.StatusCode == HttpStatusCode.Unauthorized,
             "Invalid local bearer token was accepted.");
+    }
+
+    using (var request = new HttpRequestMessage(HttpMethod.Delete, Endpoint))
+    {
+        using var response = await unauthenticatedHttp.SendAsync(request, ct);
+        Ensure(response.StatusCode == HttpStatusCode.Unauthorized, "Unauthenticated MCP DELETE was accepted.");
     }
 
     // Check the existing browser-origin and DNS-rebinding defenses over HTTP.
@@ -193,7 +192,7 @@ static async Task<int> RunSmokeAsync(McpClient client)
     }
     Ensure(rejected, "Unknown MCP tool was accepted.");
 
-    Console.WriteLine("PASS: SDK MCP initialize, discovery, status, save/load, validation, unknown tool, default-denied desktop launch, local bearer authentication, Host/Origin.");
+    Console.WriteLine("PASS: SDK MCP initialize, discovery, status, save/load, tool errors, denied launch, unknown tool, local bearer authentication GET/POST/DELETE, Host/Origin.");
     Console.WriteLine("NOTE: No interactive Windows GUI action was attempted by this headless smoke test.");
     return 0;
 }

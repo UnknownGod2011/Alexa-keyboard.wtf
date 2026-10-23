@@ -10,3 +10,9 @@
 *.pfx
 *.pem
 *.key
+__pycache__/
+*.pyc
+artifacts/
+**/mcp-auth-token
+**/server.lock
+
