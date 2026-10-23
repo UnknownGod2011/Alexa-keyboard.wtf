@@ -19,19 +19,22 @@ internal static class Program
         foreach (var process in existing) process.Dispose();
         if (occupied) { Console.Error.WriteLine("Refusing to interfere with an existing Notepad session."); return 2; }
         var owned = new Dictionary<int, DateTime>();
+        NativeMcpFixture? fixture = null;
+        ExplorerWindowProbe? explorer = null;
         try
         {
-            var fixture = new NativeMcpFixture();
+            fixture = new NativeMcpFixture();
             try
             {
                 fixture.StartAsync().GetAwaiter().GetResult();
+                explorer = new ExplorerWindowProbe(fixture.ApprovedDirectory);
                 fixture.RestoreThroughMcpAsync().GetAwaiter().GetResult();
             }
             finally
             {
                 foreach (var item in fixture.OwnedProcesses) owned.TryAdd(item.Key, item.Value);
-                fixture.DisposeAsync().AsTask().GetAwaiter().GetResult();
             }
+            explorer.VerifyOpened();
             IntPtr window = IntPtr.Zero;
             Rectangle bounds = default;
             for (var i = 0; i < 60 && window == IntPtr.Zero; i++)
@@ -97,6 +100,8 @@ internal static class Program
                 catch (Exception ex) when (ex is ArgumentException or InvalidOperationException or System.ComponentModel.Win32Exception)
                 { Console.Error.WriteLine("Native test cleanup: " + ex.GetType().Name); }
             }
+            explorer?.Dispose();
+            if (fixture is not null) fixture.DisposeAsync().AsTask().GetAwaiter().GetResult();
         }
     }
 

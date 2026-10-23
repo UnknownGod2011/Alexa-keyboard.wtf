@@ -23,6 +23,7 @@ internal sealed class NativeMcpFixture : IAsyncDisposable
     private WebApplication? _app;
     private McpClient? _client;
     private readonly ObservedNotepadLauncher _launcher = new();
+    internal string ApprovedDirectory => _directory;
     internal IReadOnlyDictionary<int, DateTime> OwnedProcesses => _launcher.Owned;
 
     internal async Task StartAsync()
@@ -67,7 +68,7 @@ internal sealed class NativeMcpFixture : IAsyncDisposable
         if (tools.Count != 8) throw new InvalidOperationException("Native MCP tool inventory differs from the production tool assembly.");
         var saved = await client.CallToolAsync("save_workspace", new Dictionary<string, object?> {
             ["name"] = "Development", ["relativeFolder"] = ".", ["summary"] = "Native Windows MCP workspace validation",
-            ["openFolder"] = false, ["openNotepad"] = true
+            ["openFolder"] = true, ["openNotepad"] = true
         }, cancellationToken: ct);
         if (saved.IsError == true) throw new InvalidOperationException("Native workspace fixture save failed.");
         async Task<CallToolResult> RestoreAsync() => await client.CallToolAsync("restore_workspace", new Dictionary<string, object?> { ["name"] = "Development" }, cancellationToken: ct);
@@ -83,9 +84,14 @@ internal sealed class NativeMcpFixture : IAsyncDisposable
         _input.Send("approve " + second);
         var result = await restored;
         var text = string.Join("\n", result.Content.OfType<TextContentBlock>().Select(x => x.Text));
-        if (result.IsError == true || !text.Contains("process_reported", StringComparison.Ordinal))
-            throw new InvalidOperationException("Native MCP workspace restore did not report its actual launch: " + text);
-        Console.WriteLine("PASS: actual SDK MCP workspace save, denied restore, fresh local-test-console approval and real Windows Notepad launch.");
+        using var response = System.Text.Json.JsonDocument.Parse(text);
+        var steps = response.RootElement.GetProperty("steps").EnumerateArray().ToArray();
+        var folder = steps.Single(s => s.GetProperty("Action").GetString() == "open_folder").GetProperty("State").GetString();
+        var notepad = steps.Single(s => s.GetProperty("Action").GetString() == "open_notepad").GetProperty("State").GetString();
+        if (notepad != "process_reported" || folder is not ("process_reported" or "request_sent_unverified") ||
+            (result.IsError == true) != (folder == "request_sent_unverified"))
+            throw new InvalidOperationException("Native MCP workspace restore did not truthfully report both launches: " + text);
+        Console.WriteLine("PASS: actual SDK MCP workspace save, denied restore, fresh local-test-console approval and real Windows folder/Notepad requests.");
         Console.WriteLine("NOTE: local console replies are simulated test input; production operator interaction remains an end-user check.");
     }
 
