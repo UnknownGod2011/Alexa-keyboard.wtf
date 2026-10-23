@@ -2,16 +2,17 @@
 
 An independent Windows-oriented companion exposing a small, safe subset of desktop actions through the Model Context Protocol (MCP). This project is inspired by the original [keyboard.wtf](https://github.com/UnknownGod2011/keyboard.wtf), but runs separately and does not require the original application to be installed.
 
-**Status:** early functional prototype. A real MCP client/server round-trip has passed automated Windows CI, but the interactive Windows desktop, GUI, authentication, and production Alexa+ integration have **not** been verified or completed. This is not an official Amazon Alexa application.
+**Status:** early functional prototype. A real MCP client/server round-trip has passed automated Windows CI, but the interactive Windows desktop, GUI, per-action server-side approval, and production Alexa+ integration have **not** been verified or completed. This is not an official Amazon Alexa application.
 
 ## Features available now
 
 - **Real Streamable HTTP MCP:** official C# SDK 2.3.0, server at `http://127.0.0.1:32178/mcp`.
+- **Automatic local bearer authentication:** each server startup creates a fresh random 256-bit credential in the current user's local application data. The included simulator reads it automatically, without a cloud account or API key.
 - **No-key console simulator:** a separate .NET MCP client that discovers tools and calls them over HTTP; no AI account required.
 - **Desktop status:** reports non-sensitive process/platform information.
-- **Open Notepad:** asks for explicit confirmation in the console before requesting a Windows process launch. A returned PID does not prove a visible window. Other MCP clients can currently call this tool without that console confirmation.
+- **Open Notepad:** asks for explicit confirmation in the console before requesting a Windows process launch. A returned PID does not prove a visible window. Other authenticated MCP clients can still invoke it without that console confirmation; server-side user approval remains a priority.
 - **Task handoffs:** save and load bounded, named task summaries from local application data.
-- **Automated protocol smoke:** starts server and client in separate processes, checks initialization, discovery, real tool calls, input rejection, unknown tools, and HTTP Host/Origin defenses.
+- **Automated protocol smoke:** starts server and client in separate processes, checks initialization, discovery, real tool calls, input rejection, unknown tools, local bearer authorization, and HTTP Host/Origin defenses.
 
 ## Prerequisites
 
@@ -57,7 +58,7 @@ The simulator is a **console application**, not yet a graphical or voice assista
 | `save_task_handoff` | Saves a bounded named task summary to local application data. |
 | `load_task_handoff` | Loads a previously saved task summary by name. |
 
-Other compatible MCP clients can connect to `http://127.0.0.1:32178/mcp` using Streamable HTTP. Use MCP initialization and tool discovery, not the `/health` route, to verify protocol compatibility.
+Other compatible MCP clients can connect to `http://127.0.0.1:32178/mcp` using Streamable HTTP **with local bearer authentication**. The bridge creates a fresh credential on startup at `%LOCALAPPDATA%\\AlexaKeyboardBridge\\runtime\\mcp-auth-token` on Windows. A separate client running as the same OS user must read that file and send an `Authorization: Bearer <token>` header on **every MCP HTTP request**. Do not commit, log, or share this token. The included simulator handles this automatically. Use MCP initialization and tool discovery, not the `/health` route, to verify protocol compatibility.
 
 ## Tests
 
@@ -88,9 +89,9 @@ The server binds only to `127.0.0.1:32178`, checks Host and Origin headers, and 
 
 ## Privacy and security
 
-The current server **does not authenticate local MCP clients**. Loopback binding and Origin/Host checks are useful but are not complete protection against malicious local software. Do not tunnel, proxy, or expose this endpoint to the public Internet. Only run it on a computer you trust.
+The server requires a per-start random local bearer token for all MCP methods, in addition to loopback binding and Host/Origin checks. The token is stored under the current user's local application data directory, protected by its inherited OS permissions (and explicit Unix file mode on Unix). **This does not protect against malicious processes running as the same OS user**, which can read the token. Do not tunnel, proxy, or expose this endpoint to the public Internet. Only run it on a computer you trust.
 
-Saved task summaries are stored as **plaintext** under the current user's local application data directory; never store credentials or sensitive content. Other MCP clients can call the available tools without the simulator's interactive confirmation. Stronger authorization is required before adding more powerful desktop actions.
+Saved task summaries are stored as **plaintext** under the current user's local application data directory; never store credentials or sensitive content. Other authenticated MCP clients can call `open_notepad` without the simulator's interactive confirmation. Stronger **server-enforced per-action approval** is required before adding more powerful desktop actions.
 
 ## Optional AI and Alexa+ integration
 
@@ -99,6 +100,7 @@ No external API key is required for the implemented features. Conversational AI,
 ## Troubleshooting
 
 - **Connection refused:** start the bridge in Terminal 1 before launching the simulator.
+- **HTTP 401 / missing local credential:** run bridge and simulator as the same OS user, start the bridge first, and restart the simulator after a bridge restart (credentials rotate). This is a local authorization token, not an AI provider API key.
 - **Port 32178 in use:** close the other instance of the bridge; only one can bind the fixed port.
 - **Notepad unavailable:** `open_notepad` requires Windows and a usable interactive desktop.
 - **Build failure:** verify .NET 8 SDK and network access for package restore.
