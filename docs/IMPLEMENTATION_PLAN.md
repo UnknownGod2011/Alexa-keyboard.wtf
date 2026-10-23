@@ -13,7 +13,7 @@ Production UnknownGod2011/keyboard.wtf is strictly read-only. All writes belong 
 
 ## Next implementation priorities
 
-1. Add meaningful development-workspace restoration. Keep host-approved roots, versioned saved workspace records and narrowly allowlisted actions; MCP callers must never choose arbitrary shell commands or bypass the policy/approval services. Add focused unit/protocol tests and keep handoff behavior intact.
+1. Complete and verify the active `codex/approved-workspace-restore` implementation. It adds versioned folder/Notepad workspaces and GUI/console commands; await Windows CI and audit the final diff before development integration. Keep host-approved roots, versioned saved workspace records and narrowly allowlisted actions; MCP callers must never choose arbitrary shell commands or bypass the policy/approval services. Add focused unit/protocol tests and keep handoff behavior intact.
 2. Perform WINDOWS_MANUAL_TEST.md on an actual supported end-user Windows desktop when available: consent, Notepad visibility, cancellation, restart, high-DPI behavior and shutdown.
 3. Add optional user-configured conversational AI/voice only while the deterministic no-key mode remains usable. Never commit keys or present fabricated model output.
 4. Review all release gates and fresh Windows usability before promoting a finished application to main. Production Alexa+ requires separate authenticated registration/pairing/networking and real external verification.

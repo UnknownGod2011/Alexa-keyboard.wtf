@@ -1,5 +1,7 @@
 # Test results and evidence
 
+The sections below are chronological checkpoints; earlier pending/unverified notes describe their own commit, not the latest state. Consult PROGRESS.md and RELEASE_READINESS.md for the current checkpoint.
+
 ## Successful protocol integration — 2026-10-23
 
 - Commit: `c9c8a4a0a0439e2c07f55ca0b75da50b51e1ed0d`

@@ -19,7 +19,7 @@ try
     Console.WriteLine("keyboard.wtf x Alexa | local MCP console");
     Console.WriteLine("Connected over Streamable HTTP. No API key is required.");
     Console.WriteLine("This is a local simulator, not an official Alexa+ connection.");
-    Console.WriteLine("Commands: tools, status, save, load, notepad, quit");
+    Console.WriteLine("Commands: tools, status, save, load, notepad, workspace policy, save workspace, load workspace, restore workspace, quit");
     while (true)
     {
         Console.Write("> ");
@@ -61,13 +61,42 @@ try
                         ["name"] = loadName
                     }, cancellationToken: callTimeout.Token));
                     break;
+                case "workspace policy":
+                    callTimeout.CancelAfter(TimeSpan.FromSeconds(40));
+                    Print(await client.CallToolAsync("get_workspace_policy", cancellationToken: callTimeout.Token));
+                    break;
+                case "save workspace":
+                    Console.Write("Workspace name: ");
+                    var workspaceName = Console.ReadLine() ?? "";
+                    Console.Write("Folder relative to the approved root ('.' = root): ");
+                    var relativeFolder = Console.ReadLine() ?? "";
+                    Console.Write("Non-sensitive summary: ");
+                    var workspaceSummary = Console.ReadLine() ?? "";
+                    Console.Write("Open folder on restore? Type yes: ");
+                    var openFolder = Console.ReadLine() == "yes";
+                    Console.Write("Open Notepad on restore? Type yes: ");
+                    var openNotepad = Console.ReadLine() == "yes";
+                    callTimeout.CancelAfter(TimeSpan.FromSeconds(40));
+                    Print(await client.CallToolAsync("save_workspace", new Dictionary<string, object?> {
+                        ["name"] = workspaceName, ["relativeFolder"] = relativeFolder, ["summary"] = workspaceSummary,
+                        ["openFolder"] = openFolder, ["openNotepad"] = openNotepad
+                    }, cancellationToken: callTimeout.Token));
+                    break;
+                case "load workspace":
+                case "restore workspace":
+                    Console.Write("Workspace name: ");
+                    var selectedWorkspace = Console.ReadLine() ?? "";
+                    callTimeout.CancelAfter(TimeSpan.FromSeconds(40));
+                    Print(await client.CallToolAsync(command == "load workspace" ? "load_workspace" : "restore_workspace",
+                        new Dictionary<string, object?> { ["name"] = selectedWorkspace }, cancellationToken: callTimeout.Token));
+                    break;
                 case "notepad":
                     callTimeout.CancelAfter(TimeSpan.FromSeconds(40));
                     Console.WriteLine("Requesting Notepad. Approve or deny this request in the server console.");
                     Print(await client.CallToolAsync("open_notepad", cancellationToken: callTimeout.Token));
                     break;
                 default:
-                    Console.WriteLine("Unknown command. Use: tools, status, save, load, notepad, quit");
+                    Console.WriteLine("Unknown command. Use: tools, status, save, load, notepad, workspace policy, save workspace, load workspace, restore workspace, quit");
                     break;
             }
         }
@@ -101,7 +130,8 @@ static async Task<int> RunSmokeAsync(McpClient client)
     var names = tools.Select(tool => tool.Name).ToHashSet(StringComparer.Ordinal);
     Console.WriteLine("Discovered MCP tools: " + string.Join(", ", names.OrderBy(name => name)));
 
-    foreach (var expected in new[] { "get_desktop_status", "open_notepad", "save_task_handoff", "load_task_handoff" })
+    foreach (var expected in new[] { "get_desktop_status", "open_notepad", "save_task_handoff", "load_task_handoff",
+        "get_workspace_policy", "save_workspace", "load_workspace", "restore_workspace" })
         Ensure(names.Contains(expected), "Missing MCP tool: " + expected);
 
     var status = await client.CallToolAsync("get_desktop_status", cancellationToken: ct);
@@ -131,6 +161,16 @@ static async Task<int> RunSmokeAsync(McpClient client)
     var missingHandoff = await client.CallToolAsync("load_task_handoff",
         new Dictionary<string, object?> { ["name"] = "Missing" + Guid.NewGuid().ToString("N") }, cancellationToken: ct);
     Ensure(missingHandoff.IsError == true, "Missing handoff was incorrectly reported as success.");
+
+    var workspace = await client.CallToolAsync("save_workspace", new Dictionary<string, object?> {
+        ["name"] = "Development", ["relativeFolder"] = "Example", ["summary"] = "Workspace MCP round trip",
+        ["openFolder"] = true, ["openNotepad"] = true
+    }, cancellationToken: ct);
+    Ensure(workspace.IsError != true, "Workspace save failed.");
+    var workspaceLoaded = await client.CallToolAsync("load_workspace", new Dictionary<string, object?> { ["name"] = "Development" }, cancellationToken: ct);
+    Ensure(workspaceLoaded.IsError != true && Text(workspaceLoaded).Contains("Workspace MCP round trip", StringComparison.Ordinal), "Workspace round trip failed.");
+    var restoreDenied = await client.CallToolAsync("restore_workspace", new Dictionary<string, object?> { ["name"] = "Development" }, cancellationToken: ct);
+    Ensure(restoreDenied.IsError == true && Text(restoreDenied).Contains("disabled", StringComparison.Ordinal), "Headless workspace restore was not denied.");
 
     var deniedLaunch = await client.CallToolAsync("open_notepad", cancellationToken: ct);
     Ensure(deniedLaunch.IsError == true, "Headless launch must fail without server-side user approval.");

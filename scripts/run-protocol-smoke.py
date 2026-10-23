@@ -47,7 +47,9 @@ def main() -> int:
 
     with tempfile.TemporaryDirectory(prefix="alexa-mcp-smoke-") as data, tempfile.TemporaryFile(mode="w+t", encoding="utf-8") as log:
         runtime = pathlib.Path(data) / "runtime"
-        env = dict(os.environ, ALEXA_BRIDGE_DATA_DIR=str(pathlib.Path(data) / "handoffs"), ALEXA_BRIDGE_RUNTIME_DIR=str(runtime))
+        projects = pathlib.Path(data) / "projects"
+        (projects / "Example").mkdir(parents=True)
+        env = dict(os.environ, ALEXA_BRIDGE_DATA_DIR=str(pathlib.Path(data) / "handoffs"), ALEXA_BRIDGE_RUNTIME_DIR=str(runtime), ALEXA_WORKSPACE_ROOT=str(projects))
         # Benign conflicting host settings must never add or replace desktop bindings.
         env["ASPNETCORE_URLS"] = "http://127.0.0.1:0"
         env["Kestrel__Endpoints__Inherited__Url"] = "http://127.0.0.1:0"

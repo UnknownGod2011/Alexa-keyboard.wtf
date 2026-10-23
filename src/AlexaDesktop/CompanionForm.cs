@@ -11,7 +11,7 @@ public sealed class CompanionForm : Form
     private static readonly Color Muted = Color.FromArgb(153, 170, 193);
     private static readonly Color Accent = Color.FromArgb(85, 220, 206);
     private readonly FlowLayoutPanel _history = new() { Dock = DockStyle.Fill, AutoScroll = true, FlowDirection = FlowDirection.TopDown, WrapContents = false, Padding = new Padding(20) };
-    private readonly TextBox _input = new() { Dock = DockStyle.Fill, PlaceholderText = "Try status, tools, save, load, or open notepad" };
+    private readonly TextBox _input = new() { Dock = DockStyle.Fill, PlaceholderText = "Try status, save workspace, restore workspace, or tools" };
     private readonly TextBox _name = new() { Dock = DockStyle.Top, Text = "Development", MaxLength = 64 };
     private readonly TextBox _summary = new() { Dock = DockStyle.Fill, Multiline = true, ScrollBars = ScrollBars.Vertical, MaxLength = 1500, PlaceholderText = "A non-sensitive task summary to save…" };
     private readonly Label _status = new() { AutoSize = true, ForeColor = Muted, Text = "Disconnected" };
@@ -69,7 +69,7 @@ public sealed class CompanionForm : Form
         sidebar.RowStyles.Add(new RowStyle(SizeType.Percent, 55));
         sidebar.RowStyles.Add(new RowStyle(SizeType.Absolute, 42));
         sidebar.RowStyles.Add(new RowStyle(SizeType.Percent, 45));
-        sidebar.Controls.Add(new Label { Text = "TASK HANDOFF", AutoSize = true, ForeColor = Accent }, 0, 0);
+        sidebar.Controls.Add(new Label { Text = "TASK / WORKSPACE", AutoSize = true, ForeColor = Accent }, 0, 0);
         sidebar.Controls.Add(_name, 0, 1);
         sidebar.Controls.Add(new Label { Text = "Summary (stored as plaintext)", AutoSize = true, ForeColor = Muted }, 0, 2);
         sidebar.Controls.Add(_summary, 0, 3);
@@ -91,7 +91,7 @@ public sealed class CompanionForm : Form
         composer.Controls.Add(_cancel, 2, 0);
         footer.Controls.Add(composer, 0, 0);
         var shortcuts = new FlowLayoutPanel { Dock = DockStyle.Fill };
-        foreach (var pair in new[] { ("Desktop status", "status"), ("Save handoff", "save"), ("Load handoff", "load"), ("Open Notepad", "notepad") })
+        foreach (var pair in new[] { ("Desktop status", "status"), ("Save handoff", "save"), ("Load handoff", "load"), ("Open Notepad", "notepad"), ("Save workspace", "save workspace"), ("Restore", "restore workspace") })
         {
             var button = new Button { Text = pair.Item1, AutoSize = true, Margin = new Padding(0, 0, 8, 0) };
             button.Click += (_, _) => StartCommand(pair.Item2);
@@ -123,13 +123,21 @@ public sealed class CompanionForm : Form
         var command = ManualCommands.Parse(text);
         var name = _name.Text;
         var summary = _summary.Text;
+        Dictionary<string, object?>? workspaceArguments = null;
+        if (command == ManualCommand.SaveWorkspace)
+        {
+            using var dialog = new WorkspaceDialog(name);
+            if (dialog.ShowDialog(this) != DialogResult.OK) return;
+            workspaceArguments = new() { ["name"] = name, ["summary"] = summary,
+                ["relativeFolder"] = dialog.RelativeFolder, ["openFolder"] = dialog.OpenFolder, ["openNotepad"] = dialog.OpenNotepad };
+        }
         _input.Clear();
         AddCard("You", text, Color.WhiteSmoke);
         _currentTask = RunOperationAsync(async ct =>
         {
             if (command == ManualCommand.Help)
             {
-                AddCard("Manual mode", "Supported commands: status, tools, save, load, open notepad. Save/load use the handoff fields. Free-form AI conversation is not enabled.", Muted);
+                AddCard("Manual mode", "Supported commands: status, tools, save, load, open notepad, workspace policy, save workspace, load workspace, restore workspace. Workspace actions use the name and summary fields. Free-form AI conversation is not enabled.", Muted);
                 return;
             }
             if (_bridge is null) throw new IOException("Connect to the bridge first.");
@@ -139,26 +147,32 @@ public sealed class CompanionForm : Form
                 ManualCommand.Status => "get_desktop_status",
                 ManualCommand.Save => "save_task_handoff",
                 ManualCommand.Load => "load_task_handoff",
-                _ => "open_notepad"
+                ManualCommand.WorkspacePolicy => "get_workspace_policy",
+                ManualCommand.SaveWorkspace => "save_workspace",
+                ManualCommand.LoadWorkspace => "load_workspace",
+                ManualCommand.RestoreWorkspace => "restore_workspace",
+                ManualCommand.Notepad => "open_notepad",
+                _ => throw new InvalidOperationException("Unsupported manual command.")
             };
             Dictionary<string, object?>? arguments = command switch
             {
                 ManualCommand.Save => new() { ["name"] = name, ["summary"] = summary },
-                ManualCommand.Load => new() { ["name"] = name },
+                ManualCommand.Load or ManualCommand.LoadWorkspace or ManualCommand.RestoreWorkspace => new() { ["name"] = name },
+                ManualCommand.SaveWorkspace => workspaceArguments,
                 _ => null
             };
-            if (command == ManualCommand.Notepad)
+            if (command is ManualCommand.Notepad or ManualCommand.RestoreWorkspace)
                 AddCard("Approval", "If desktop launches are enabled, approve or deny this individual request in the server console. Cancel request stops waiting; a completed Windows launch cannot be undone.", Muted);
             _status.Text = "Executing · " + tool;
             var result = await _bridge.CallAsync(tool, arguments, ct);
             var text = BridgeConnection.Text(result);
-            if (result.IsError != true && command == ManualCommand.Load)
+            if (result.IsError != true && command is ManualCommand.Load or ManualCommand.LoadWorkspace)
             {
                 using var handoff = JsonDocument.Parse(text);
                 _summary.Text = handoff.RootElement.GetProperty("Summary").GetString() ?? "";
             }
             AddCard(tool + (result.IsError == true ? " · denied or failed" : " · completed"),
-                result.IsError == true ? text : PresentResult(tool, text), result.IsError == true ? Color.Salmon : Accent);
+                PresentResult(tool, text), result.IsError == true ? Color.Salmon : Accent);
         });
     }
 
@@ -239,9 +253,20 @@ public sealed class CompanionForm : Form
 
     private static string PresentResult(string tool, string text)
     {
-        if (tool is not ("get_desktop_status" or "load_task_handoff")) return text;
+        if (tool is not ("get_desktop_status" or "load_task_handoff" or "get_workspace_policy" or "save_workspace" or "load_workspace" or "restore_workspace") || !text.TrimStart().StartsWith('{')) return text;
         using var document = JsonDocument.Parse(text);
         var data = document.RootElement;
+        if (tool == "get_workspace_policy")
+            return $"Approved project root: {data.GetProperty("root").GetString()}\n\nDesktop launches: {(data.GetProperty("desktopActionsEnabled").GetBoolean() ? "enabled, with fresh approval for each restore" : "disabled by the server operator")}";
+        if (tool is "save_workspace" or "load_workspace")
+            return $"{data.GetProperty("Name").GetString()}\nFolder: {data.GetProperty("RelativeFolder").GetString()}\nOpen folder: {data.GetProperty("OpenFolder").GetBoolean()} · Open Notepad: {data.GetProperty("OpenNotepad").GetBoolean()}\n\n{data.GetProperty("Summary").GetString()}\n\nSaved: {data.GetProperty("SavedAt").GetDateTimeOffset().ToLocalTime():g}";
+        if (tool == "restore_workspace")
+            return data.GetProperty("workspace").GetString() + "\n\n" +
+                string.Join("\n", data.GetProperty("steps").EnumerateArray().Select(step =>
+                    step.GetProperty("Action").GetString() + ": " + step.GetProperty("State").GetString() +
+                    (step.GetProperty("ProcessId").ValueKind == JsonValueKind.Number ? " (PID " + step.GetProperty("ProcessId").GetInt32() + ")" : "") +
+                    (step.GetProperty("Detail").ValueKind == JsonValueKind.String ? " · " + step.GetProperty("Detail").GetString() : ""))) +
+                "\n\n" + data.GetProperty("note").GetString();
         if (tool == "load_task_handoff")
             return $"{data.GetProperty("Name").GetString()}\n\n{data.GetProperty("Summary").GetString()}\n\nSaved: {data.GetProperty("SavedAt").GetDateTimeOffset().ToLocalTime():g}";
         var enabled = data.GetProperty("desktopActionsEnabled").GetBoolean();
@@ -260,7 +285,7 @@ public sealed class CompanionForm : Form
     internal async Task VerifyUiAsync()
     {
         await _currentTask;
-        Ensure(_bridge is not null && _tools.Items.Count == 4, "initial connection/discovery failed");
+        Ensure(_bridge is not null && _tools.Items.Count == 8, "initial connection/discovery failed");
         _input.Text = "status";
         _send.PerformClick();
         await _currentTask;
@@ -274,6 +299,28 @@ public sealed class CompanionForm : Form
         _shortcuts[2].PerformClick();
         await _currentTask;
         Ensure(LastCard().Title == "load_task_handoff · completed" && _summary.Text == "Graphical simulator to MCP server round trip" && LastCard().Body.Contains(_summary.Text, StringComparison.Ordinal), "load button did not retrieve saved data and restore the editable summary");
+
+        _summary.Text = "Workspace MCP round trip";
+        BeginInvoke((Action)(() => {
+            var dialog = Application.OpenForms.OfType<WorkspaceDialog>().Single();
+            dialog.FillForCheck("Example", true, true);
+            dialog.AcceptButton!.PerformClick();
+        }));
+        _shortcuts[4].PerformClick();
+        await _currentTask;
+        Ensure(LastCard().Title == "save_workspace · completed", "workspace dialog/save button failed");
+        _summary.Clear();
+        _input.Text = "load workspace";
+        _send.PerformClick();
+        await _currentTask;
+        Ensure(LastCard().Title == "load_workspace · completed" && _summary.Text == "Workspace MCP round trip", "workspace load did not return saved summary");
+        _shortcuts[5].PerformClick();
+        await _currentTask;
+        Ensure(LastCard().Title == "restore_workspace · denied or failed" && LastCard().Body.Contains("disabled", StringComparison.Ordinal), "restore button bypassed operator policy");
+        _input.Text = "workspace policy";
+        _send.PerformClick();
+        await _currentTask;
+        Ensure(LastCard().Title == "get_workspace_policy · completed", "workspace policy query failed");
 
         var directory = Environment.GetEnvironmentVariable("ALEXA_UI_CAPTURE_DIR");
         if (!string.IsNullOrWhiteSpace(directory))
@@ -308,7 +355,7 @@ public sealed class CompanionForm : Form
         Ensure(LastCard().Title == "Manual mode", "unsupported input selected a desktop action");
         _connect.PerformClick();
         await _currentTask;
-        Ensure(_bridge is not null && _tools.Items.Count == 4 && _connect.Enabled, "reconnect failed");
+        Ensure(_bridge is not null && _tools.Items.Count == 8 && _connect.Enabled, "reconnect failed");
     }
 
     private (string Title, string Body) LastCard()

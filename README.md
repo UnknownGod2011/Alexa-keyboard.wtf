@@ -9,6 +9,7 @@ A standalone Windows companion that exposes a small set of desktop capabilities 
 - Official C# MCP SDK 2.3.0, with a loopback Streamable HTTP endpoint.
 - Automatic local authentication: a new random 256-bit token for each server start, discovered by same-user clients.
 - No-key manual mode: discover tools, retrieve desktop status, and save/load task handoffs.
+- Versioned workspaces: save a project folder under a host-approved root, a summary and explicit folder/Notepad actions; restore through one fresh approval for the complete bundle.
 - Windows graphical simulator: conversation/action history, connection state, discovered tools, handoff fields, reconnect, request cancellation, and real execution results.
 - Windows Notepad launch: disabled by default, requires operator opt-in and a fresh approval in the server console for each request.
 - Validation and storage failures return MCP tool errors; no simulated success responses.
@@ -99,6 +100,21 @@ Verify the Notepad window yourself: a returned PID reports process launch, not v
 
 Close the simulator when finished, then use Ctrl+C in Terminal 1 to stop the bridge. A cancelled request does not undo an action already accepted by Windows.
 
+### Approved workspaces
+
+Before starting the bridge, choose an existing local project root. For example:
+
+```powershell
+$env:ALEXA_WORKSPACE_ROOT = "C:\Projects"
+.\scripts\start-local.ps1 -EnableDesktopActions
+```
+
+In the graphical client, enter a workspace name and non-sensitive summary, then choose **Save workspace**. Enter an existing folder relative to the approved root (for example `Example`, or `.` for the root itself) and select the actions to save. Saving does not launch anything. Type `workspace policy` to inspect the configured root or `load workspace` to read the saved record.
+
+Choose **Restore** using the saved name. The bridge console shows the exact folder and requested actions. One fresh approval authorizes that bundle only. Restoring can open the approved folder and/or a blank Windows Notepad; it does not restore editor tabs, terminals, running processes or arbitrary commands. Results report each step separately. A shell request without a returned process is explicitly unverified, and a reported process still does not prove a visible window. Check the desktop before retrying a partial or cancelled restore.
+
+Relative traversal, network roots, symbolic links and junctions (including ancestors) are rejected. Changing the configured root invalidates existing saved workspaces until saved again. This binds records to the configured root path, not the identity of an underlying disk directory; another program running as the same OS account can modify local directories. An unconfigured root produces an actionable error without disabling the handoff tools.
+
 ### Manual commands
 
 | Command | Action |
@@ -108,6 +124,10 @@ Close the simulator when finished, then use Ctrl+C in Terminal 1 to stop the bri
 | `save` | Save the named summary (console asks for fields) |
 | `load` | Load a saved summary |
 | `notepad` / `open notepad` | Request a server-approved Windows launch |
+| `workspace policy` | Inspect the host-approved root and restore policy |
+| `save workspace` | Save folder, summary and explicit actions; GUI opens a form |
+| `load workspace` | Read and validate the named workspace |
+| `restore workspace` | Request approval for the named workspace bundle |
 
 The graphical simulator accepts this explicit vocabulary. Other text shows help and does not execute a desktop action. It does not pretend to be a cloud conversational model.
 
@@ -121,6 +141,10 @@ Endpoint: `http://127.0.0.1:32178/mcp`, Streamable HTTP.
 | `save_task_handoff` | Write a named summary in dedicated local storage |
 | `load_task_handoff` | Read a validated saved summary |
 | `open_notepad` | Default-denied launch; operator opt-in plus per-request approval |
+| `get_workspace_policy` | Inspect the host-configured root and restore policy |
+| `save_workspace` | Validate and save a versioned workspace without launching |
+| `load_workspace` | Read and revalidate folder, format and approved-root binding |
+| `restore_workspace` | Default-denied restore; fresh bundle approval and per-step results |
 
 On Windows the bridge creates its token at `%LOCALAPPDATA%\AlexaKeyboardBridge\runtime\mcp-auth-token`. Other same-user clients must read it and send `Authorization: Bearer <token>` on every MCP request, including GET and DELETE. Never commit, log, or share the token. The included clients handle it automatically.
 
@@ -136,13 +160,13 @@ python scripts/run-protocol-smoke.py
 dotnet run --project tests/AlexaBridge.Checks/AlexaBridge.Checks.csproj -c Release
 ```
 
-The smoke script starts the real bridge, initializes the independent SDK client, discovers tools, and tests authenticated calls, handoff persistence, invalid inputs, missing records, denied launches, unknown tools, and Host/Origin/authentication defenses. It uses temporary handoff storage and does not launch Notepad.
+The smoke script starts the real bridge, initializes the independent SDK client, discovers tools, and tests authenticated calls, handoff persistence, invalid inputs, missing records, denied launches, unknown tools, and Host/Origin/authentication defenses. It uses temporary handoff/workspace storage and an isolated project fixture; it does not launch desktop applications.
 
 The regression executable tests permission denials, cancellation before side effects, launch failure reporting, storage validation, corrupt files, concurrent atomic saves, and manual command routing. Its recording launcher is a test adapter, not evidence of a real desktop launch.
 
 An independent Python HTTP client additionally checks MCP `2025-11-25` negotiation, initialization lifecycle, argument schemas, concurrent calls, and protocol errors. Startup tests reject a second server without rotating its live token; shutdown tests require authentication and verify credential cleanup. Runtime and handoff directories are isolated during smoke tests. Windows CI also exercises published DLLs and the extracted launcher from a directory with spaces. It verifies that the launcher refuses a foreign listener and that shutdown rejects an owner-process mismatch.
 
-Windows CI builds the graphical simulator but does not establish its visual layout or visible desktop behavior. See [test evidence](docs/TEST_RESULTS.md) and [interactive Windows checks](docs/WINDOWS_MANUAL_TEST.md).
+Windows CI exercises graphical controls over MCP and captures actual control renders at standard and compact sizes. It does not establish visible end-user desktop behavior. See [test evidence](docs/TEST_RESULTS.md) and [interactive Windows checks](docs/WINDOWS_MANUAL_TEST.md).
 
 ## Security and privacy
 
@@ -163,6 +187,7 @@ No external API keys are required for the implemented tools. Optional conversati
 - **Disconnected / HTTP 401:** start the bridge under the same OS user; reconnect after every bridge restart because its credential rotates.
 - **Port or instance lock in use:** close the existing bridge before starting another.
 - **Notepad denied:** enable the operator policy before server start, keep its console interactive, then approve the individual request there.
+- **Workspace root error:** set `ALEXA_WORKSPACE_ROOT` to an existing absolute local directory before starting the bridge; remove junctions/symlinks from its ancestry and choose a relative folder inside it.
 - **Invalid handoff name:** use 1–64 ASCII letters/digits/internal spaces/dash/underscore; no leading/trailing spaces or Windows device names.
 - **Save/load error:** check local data permissions and record format. Never place credentials in summaries.
 - **Build failure:** verify .NET 8 SDK and NuGet connectivity.
