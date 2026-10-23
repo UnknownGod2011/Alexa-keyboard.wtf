@@ -9,7 +9,7 @@ This is a development preview, not a verified release.
 | No AI key required | Passed protocol smoke |
 | Local authentication | Passed Windows CI |
 | Default-denied launches | Passed scheduled-worker CI |
-| Per-action host approval, cancellation, truthful errors | Passed recording-adapter and headless MCP checks |
+| Per-action host approval, cancellation, truthful errors | Passed direct approval lifecycle, recording-adapter and headless MCP checks |
 | Combined policy and graphical simulator build | Passed Windows CI 39987052287 |
 | Hosted graphical control events/render | Passed CI 39988366057; captured control render visually inspected |
 | Visible simulator behavior | Interactive end-user desktop still unverified |
@@ -20,3 +20,12 @@ This is a development preview, not a verified release.
 | Ready for main / public release | No; remaining gates must be completed |
 
 Do not infer visible Windows correctness from hosted CI. See WINDOWS_MANUAL_TEST.md.
+
+## Remaining work by priority
+
+1. Verify real end-user Windows desktop behavior, including Notepad visibility, consent UX, cancellation, restart and shutdown. Hosted control renders are not a substitute.
+2. Implement meaningful saved development-workspace restoration through approved directories and allowlisted actions. Loading a task summary is not full workspace restoration.
+3. Add optional externally configured conversational AI/voice only after the deterministic no-key path remains stable.
+4. Design and verify actual remote Alexa+ registration, authentication and pairing if external access becomes available. Localhost is not cloud connectivity.
+
+The current deliverable can be integrated into the development branch as a tested local preview. These remaining gates prevent claiming a final release or merging as a finished product into main.

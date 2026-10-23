@@ -56,6 +56,8 @@ try
     var loaded = tools.LoadTaskHandoff("Development");
     var item = JsonSerializer.Deserialize<TaskHandoff>(Text(loaded));
     Check(loaded.IsError != true && item?.Summary == summary && item.Version == 1, "load preserves summary and schema");
+    if (OperatingSystem.IsWindows())
+        Check(store.Load("development").Summary == summary, "Windows handoff lookup preserves case-insensitive filesystem behavior");
 
     using var cancelledSave = new CancellationTokenSource();
     cancelledSave.Cancel();

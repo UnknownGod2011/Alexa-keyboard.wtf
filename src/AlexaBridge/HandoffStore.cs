@@ -66,7 +66,7 @@ public sealed class HandoffStore
             using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read);
             if (stream.Length > MaxFileBytes) throw new InvalidDataException("Saved task handoff is too large.");
             var item = JsonSerializer.Deserialize<TaskHandoff>(stream);
-            if (item is not { Version: 1 } || item.Name != name || string.IsNullOrWhiteSpace(item.Summary) || item.Summary.Length > MaxSummaryLength)
+            if (item is not { Version: 1 } || !string.Equals(item.Name, name, StringComparison.OrdinalIgnoreCase) || string.IsNullOrWhiteSpace(item.Summary) || item.Summary.Length > MaxSummaryLength)
                 throw new InvalidDataException("Unsupported or invalid task handoff format.");
             return item;
         }
