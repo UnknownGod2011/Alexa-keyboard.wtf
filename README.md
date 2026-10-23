@@ -10,7 +10,7 @@ An independent Windows-oriented companion exposing a small, safe subset of deskt
 - **Automatic local bearer authentication:** each server startup creates a fresh random 256-bit credential in the current user's local application data. The included simulator reads it automatically, without a cloud account or API key.
 - **No-key console simulator:** a separate .NET MCP client that discovers tools and calls them over HTTP; no AI account required.
 - **Desktop status:** reports non-sensitive process/platform information.
-- **Open Notepad:** asks for explicit confirmation in the console before requesting a Windows process launch. A returned PID does not prove a visible window. Other authenticated MCP clients can still invoke it without that console confirmation; server-side user approval remains a priority.
+- **Open Notepad (opt-in):** the bridge denies application launches by default. The server operator must set `ALEXA_ALLOW_DESKTOP_ACTIONS=1` before starting it; the simulator also asks for explicit confirmation in the console before requesting a Windows process launch. A returned PID does not prove a visible window. Other authenticated MCP clients can still invoke it without that console confirmation; server-side user approval remains a priority.
 - **Task handoffs:** save and load bounded, named task summaries from local application data.
 - **Automated protocol smoke:** starts server and client in separate processes, checks initialization, discovery, real tool calls, input rejection, unknown tools, local bearer authorization, and HTTP Host/Origin defenses.
 
@@ -33,7 +33,7 @@ dotnet restore src/AlexaBridge/AlexaBridge.csproj
 dotnet restore src/AlexaSimulator/AlexaSimulator.csproj
 ```
 
-**Terminal 1 — start the local MCP server:**
+**Terminal 1 — start the local MCP server (read-only desktop mode by default):**
 
 ```powershell
 dotnet run --project src/AlexaBridge/AlexaBridge.csproj
@@ -45,7 +45,14 @@ dotnet run --project src/AlexaBridge/AlexaBridge.csproj
 dotnet run --project src/AlexaSimulator/AlexaSimulator.csproj
 ```
 
-Type `tools` to discover the actual MCP tools, `status` for a safe read-only action, `save` to record a non-sensitive task summary, and `load` to retrieve it. Type `notepad` to request a Windows Notepad launch after a local console confirmation. Type `quit` to close the simulator; stop the server in Terminal 1 with Ctrl+C.
+Type `tools` to discover the actual MCP tools, `status` for a safe read-only action, `save` to record a non-sensitive task summary, and `load` to retrieve it. To allow the `notepad` action, **stop the bridge and restart it** with `ALEXA_ALLOW_DESKTOP_ACTIONS=1` set in Terminal 1:
+
+```powershell
+$env:ALEXA_ALLOW_DESKTOP_ACTIONS = '1'
+dotnet run --project src/AlexaBridge/AlexaBridge.csproj
+```
+
+Then restart the simulator (the bearer token rotates) and type `notepad` to request a Windows Notepad launch after a local console confirmation. The server opt-in is process-wide, **not** a per-action approval; only use it on a trusted computer. Type `quit` to close the simulator; stop the server in Terminal 1 with Ctrl+C.
 
 The simulator is a **console application**, not yet a graphical or voice assistant. It uses the real MCP client transport and does not call desktop methods directly.
 
@@ -54,7 +61,7 @@ The simulator is a **console application**, not yet a graphical or voice assista
 | Tool | Behavior |
 | --- | --- |
 | `get_desktop_status` | Returns OS/process information without modifying the desktop. |
-| `open_notepad` | Requests a Windows Notepad process launch; window visibility must be checked manually. |
+| `open_notepad` | Denied by default. When the bridge operator sets `ALEXA_ALLOW_DESKTOP_ACTIONS=1`, requests a Windows Notepad process launch; window visibility must be checked manually. |
 | `save_task_handoff` | Saves a bounded named task summary to local application data. |
 | `load_task_handoff` | Loads a previously saved task summary by name. |
 
@@ -91,7 +98,7 @@ The server binds only to `127.0.0.1:32178`, checks Host and Origin headers, and 
 
 The server requires a per-start random local bearer token for all MCP methods, in addition to loopback binding and Host/Origin checks. The token is stored under the current user's local application data directory, protected by its inherited OS permissions (and explicit Unix file mode on Unix). **This does not protect against malicious processes running as the same OS user**, which can read the token. Do not tunnel, proxy, or expose this endpoint to the public Internet. Only run it on a computer you trust.
 
-Saved task summaries are stored as **plaintext** under the current user's local application data directory; never store credentials or sensitive content. Other authenticated MCP clients can call `open_notepad` without the simulator's interactive confirmation. Stronger **server-enforced per-action approval** is required before adding more powerful desktop actions.
+Saved task summaries are stored as **plaintext** under the current user's local application data directory; never store credentials or sensitive content. The server **denies desktop application launches by default** unless its operator sets `ALEXA_ALLOW_DESKTOP_ACTIONS=1` before startup. After opt-in, other authenticated MCP clients can call `open_notepad` without the simulator's interactive confirmation. Stronger **per-action approval** is still required before adding more powerful desktop actions.
 
 ## Optional AI and Alexa+ integration
 
@@ -102,6 +109,7 @@ No external API key is required for the implemented features. Conversational AI,
 - **Connection refused:** start the bridge in Terminal 1 before launching the simulator.
 - **HTTP 401 / missing local credential:** run bridge and simulator as the same OS user, start the bridge first, and restart the simulator after a bridge restart (credentials rotate). This is a local authorization token, not an AI provider API key.
 - **Port 32178 in use:** close the other instance of the bridge; only one can bind the fixed port.
+- **Notepad denied:** desktop launches are disabled by default; explicitly opt in through the server's `ALEXA_ALLOW_DESKTOP_ACTIONS=1` environment variable and restart the bridge and simulator.
 - **Notepad unavailable:** `open_notepad` requires Windows and a usable interactive desktop.
 - **Build failure:** verify .NET 8 SDK and network access for package restore.
 - **No source after cloning:** switch to `codex/alexa-plus-completion` until the verified release is merged into `main`.
