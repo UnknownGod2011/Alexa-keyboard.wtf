@@ -21,3 +21,5 @@ Production UnknownGod2011/keyboard.wtf is strictly read-only. All changes belong
 6. Review release gates, integrate validated code into main, and avoid claiming unverified cloud Alexa connectivity.
 
 Use docs/PROGRESS.md, docs/TEST_RESULTS.md and docs/RELEASE_READINESS.md for evidence. Retain concurrent worker changes and never force-push.
+
+If a future run has no interactive desktop, record that limitation once and continue independent approved-workspace or optional-provider work. Do not repeatedly investigate the same environmental blocker or imply that hosted control rendering verifies actual end-user Notepad visibility.

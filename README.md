@@ -146,7 +146,7 @@ Windows CI builds the graphical simulator but does not establish its visual layo
 
 ## Security and privacy
 
-- Loopback binding, Host/Origin validation, and per-start local bearer authentication.
+- Fixed loopback binding, Host/Origin validation, and per-start local bearer authentication. Inherited ASP.NET URL/Kestrel endpoint settings cannot select other listeners.
 - A file lease prevents a second bridge instance from replacing a running server's token.
 - Notepad resolves to the Windows system directory, never arbitrary commands, PATH entries, or caller-supplied executables.
 - Saved summaries are plaintext under local application data. Names and contents are validated, writes are atomic, and corrupt/oversized/version-mismatched records fail.

@@ -106,3 +106,11 @@ A new hosted graphical-control smoke now exercises actual form button handlers t
 - Console user input no longer consumes the network-call deadline; graphical disconnect/close cleanup is bounded and idempotent.
 
 Approval-lifecycle follow-up adds direct service tests (in-memory local console input, no remote bypass): fresh approval, consumed/expired/cancelled challenge replay, concurrent requests, explicit denial and closed-input denial. This follow-up is pending CI at this checkpoint.
+
+## Approval service lifecycle
+
+- Commit: b6d850f8cb2dda806380c0fee7e827c918f64669
+- Windows CI: [39990718911](https://github.com/UnknownGod2011/Alexa-keyboard.wtf/actions/runs/39990718911), **success**.
+- Direct host-approval service checks passed for fresh approval, consumed/cancelled/expired challenge replay, concurrency, denial, cancellation and console EOF.
+- Source and published protocol/graphical checks, script validation, extracted launcher behavior and package generation stayed green.
+- Final binding audit adds a conflicting-inherited-configuration test and explicit loopback endpoint loading; current CI pending.

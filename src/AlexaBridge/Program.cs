@@ -12,7 +12,13 @@ builder.Services.AddSingleton<INotepadLauncher, NotepadLauncher>();
 builder.Services.AddSingleton(new DesktopActionPolicy(
     Environment.GetEnvironmentVariable("ALEXA_ALLOW_DESKTOP_ACTIONS") == "1" && !args.Contains("--deny-actions", StringComparer.Ordinal)));
 // Never inherit ASP.NET's default wildcard binding: this controls a desktop.
-builder.WebHost.UseUrls("http://127.0.0.1:32178");
+builder.WebHost.ConfigureKestrel(options =>
+{
+    // Replace inherited Kestrel endpoint configuration as well as URL defaults.
+    // Otherwise host environment/appsettings endpoints can override UseUrls.
+    options.Configure(new ConfigurationBuilder().Build(), reloadOnChange: false);
+    options.Listen(IPAddress.Loopback, 32178);
+});
 builder.Services.AddMcpServer()
     .WithHttpTransport()
     .WithToolsFromAssembly(typeof(DesktopTools).Assembly);
@@ -53,6 +59,7 @@ app.MapGet("/health", () => Results.Ok(new
     name = "keyboard.wtf Alexa MCP companion",
     status = "local-only",
     processId = Environment.ProcessId,
+    boundEndpoints = app.Urls.ToArray(),
     ai_provider = "none",
     note = "Health response does not establish MCP interoperability."
 }));

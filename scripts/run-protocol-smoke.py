@@ -48,6 +48,9 @@ def main() -> int:
     with tempfile.TemporaryDirectory(prefix="alexa-mcp-smoke-") as data, tempfile.TemporaryFile(mode="w+t", encoding="utf-8") as log:
         runtime = pathlib.Path(data) / "runtime"
         env = dict(os.environ, ALEXA_BRIDGE_DATA_DIR=str(pathlib.Path(data) / "handoffs"), ALEXA_BRIDGE_RUNTIME_DIR=str(runtime))
+        # Benign conflicting host settings must never add or replace desktop bindings.
+        env["ASPNETCORE_URLS"] = "http://127.0.0.1:0"
+        env["Kestrel__Endpoints__Inherited__Url"] = "http://127.0.0.1:0"
         server = subprocess.Popen(
             ["dotnet", str(server_dll), "--deny-actions"],
             cwd=work,
@@ -62,7 +65,10 @@ def main() -> int:
                     raise RuntimeError(f"MCP server exited early: {server.returncode}")
                 try:
                     with urllib.request.urlopen(HEALTH, timeout=1) as response:
-                        if response.status == 200 and json.load(response).get("processId") == server.pid:
+                        health = json.load(response)
+                        if response.status == 200 and health.get("processId") == server.pid:
+                            if health.get("boundEndpoints") != ["http://127.0.0.1:32178"]:
+                                raise RuntimeError("Inherited host configuration changed the loopback-only binding.")
                             break
                 except (urllib.error.URLError, TimeoutError, OSError):
                     time.sleep(0.5)
@@ -70,6 +76,7 @@ def main() -> int:
                 raise RuntimeError("MCP server did not become healthy within 30 seconds.")
 
             token_file = runtime / "mcp-auth-token"
+            print("PASS: conflicting inherited URL/Kestrel settings cannot change the fixed loopback endpoint.")
             token = token_file.read_text().strip()
             duplicate = subprocess.run(["dotnet", str(server_dll), "--deny-actions"], cwd=work,
                                        capture_output=True, text=True, timeout=15, env=env, stdin=subprocess.DEVNULL)
