@@ -11,7 +11,7 @@ Source of truth: the current GitHub branch. Original production repository `Unkn
 
 ## Highest-priority next tasks
 
-1. **Local access control (implemented, CI verification pending):** the bridge rotates a cryptographically random local bearer token on startup, the no-key simulator automatically reads it, and all MCP HTTP methods reject missing/invalid tokens. Confirm the latest CI smoke passes. This does not protect against malicious same-user programs or provide secure remote access.
+1. **Local access control (CI-verified on commit ff76ac95):** the bridge rotates a cryptographically random local bearer token on startup, the no-key simulator automatically reads it, and all MCP HTTP methods reject missing/invalid tokens. Windows CI run `39985387204` passed the authenticated MCP smoke test. This does not protect against malicious same-user programs or provide secure remote access.
 2. **Action authorization (next priority):** require a real server-enforced user approval signal for desktop side effects. A client holding the bearer token can currently invoke Notepad without a fresh on-device approval; the simulator's console confirmation is insufficient for other clients.
 3. **Tool error semantics:** invalid input and business failures should return MCP `isError` rather than success-shaped text.
 4. **Desktop UI:** create a small Windows GUI simulator that uses the same genuine MCP client transport.

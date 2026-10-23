@@ -24,3 +24,13 @@
 - GUI simulator and voice.
 - Production Alexa+ connectivity.
 - Fresh-clone installation outside CI.
+
+## Authenticated MCP integration — 2026-10-23
+
+- Commit: `ff76ac95f5b6ded05a3ce23967a1b0a1f1961f0b`
+- Windows GitHub Actions: [run 39985387204](https://github.com/UnknownGod2011/Alexa-keyboard.wtf/actions/runs/39985387204), **success**.
+- Both .NET 8 projects built successfully; separate MCP SDK client and server completed initialize, discovery, status, save/load, validation, and unknown-tool checks.
+- New negative tests verified HTTP 401 for unauthenticated MCP GET, unauthenticated MCP POST, and an invalid bearer token. Host and Origin rejection still passed.
+- The token is generated automatically on server startup and read by the same-user simulator. No AI key was used.
+- Earlier partial commits failed CI due to a mistaken `Directory.SetUnixFileMode` call; corrected to `File.SetUnixFileMode` before this successful run.
+- **Not verified:** real interactive Notepad window, server-side user approval for side effects, graphical UI, production Alexa+ connectivity.

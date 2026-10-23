@@ -72,7 +72,7 @@ python scripts/run-protocol-smoke.py
 
 The smoke script starts the real server, waits for readiness, invokes the independent official-SDK client, and stops the server. It does not launch Notepad, require API credentials, or prove a visible Windows UI.
 
-The Windows GitHub Actions workflow passed this protocol smoke on commit `c9c8a4a`: [workflow run 39977136792](https://github.com/UnknownGod2011/Alexa-keyboard.wtf/actions/runs/39977136792). See [test evidence](docs/TEST_RESULTS.md).
+The Windows GitHub Actions workflow passed the original protocol smoke on commit `c9c8a4a`: [run 39977136792](https://github.com/UnknownGod2011/Alexa-keyboard.wtf/actions/runs/39977136792). It also passed after adding local bearer authentication on commit `ff76ac95`: [run 39985387204](https://github.com/UnknownGod2011/Alexa-keyboard.wtf/actions/runs/39985387204). See [test evidence](docs/TEST_RESULTS.md).
 
 ## Architecture
 
