@@ -34,3 +34,12 @@
 - The token is generated automatically on server startup and read by the same-user simulator. No AI key was used.
 - Earlier partial commits failed CI due to a mistaken `Directory.SetUnixFileMode` call; corrected to `File.SetUnixFileMode` before this successful run.
 - **Not verified:** real interactive Notepad window, server-side user approval for side effects, graphical UI, production Alexa+ connectivity.
+
+## Default-denied desktop action policy — 2026-10-23
+
+- Commit: `6980b40579fb5a9217e13ddda78aad6d6c1946d2`
+- Windows GitHub Actions: [run 39985829707](https://github.com/UnknownGod2011/Alexa-keyboard.wtf/actions/runs/39985829707), **success**.
+- Both .NET 8 projects compiled; real Streamable HTTP MCP client/server smoke passed.
+- New assertion called `open_notepad` through MCP and verified the bridge denied it by default; the test did not open a desktop application.
+- Existing tests for bearer authentication, Host/Origin rejection, status, save/load, input validation and unknown-tool handling remained green.
+- This is **process-level operator opt-in**, not per-action on-device consent. A verified interactive Windows Notepad launch remains outstanding.
