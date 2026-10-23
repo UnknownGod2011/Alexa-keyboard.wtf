@@ -33,12 +33,11 @@ The bridge, shared client and console can also build for .NET 8 on non-Windows s
 
 ## Build and run
 
-The implementation currently lives on the development branch; `main` is not a runnable release yet.
+This is a framework-dependent development preview. The default branch contains the application source after preview integration.
 
 ```powershell
 git clone https://github.com/UnknownGod2011/Alexa-keyboard.wtf.git
 cd Alexa-keyboard.wtf
-git switch codex/alexa-plus-completion
 dotnet build src/AlexaBridge/AlexaBridge.csproj -c Release
 dotnet build src/AlexaSimulator/AlexaSimulator.csproj -c Release
 dotnet build src/AlexaDesktop/AlexaDesktop.csproj -c Release
@@ -218,6 +217,6 @@ Production Alexa+ registration, authentication, networking and end-to-end connec
 - **Invalid handoff name:** use 1–64 ASCII letters/digits/internal spaces/dash/underscore; no leading/trailing spaces or Windows device names.
 - **Save/load error:** check local data permissions and record format. Never place credentials in summaries.
 - **Build failure:** verify .NET 8 SDK and NuGet connectivity.
-- **No source after clone:** switch to the development branch until validated functionality is integrated into `main`.
+- **No source after clone:** ensure you downloaded the current default branch and extracted the complete repository, including `src` and `scripts`.
 
 See [architecture](docs/ARCHITECTURE.md), [progress](docs/PROGRESS.md), and [release readiness](docs/RELEASE_READINESS.md).
