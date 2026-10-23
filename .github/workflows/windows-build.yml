@@ -7,15 +7,24 @@ on:
 permissions:
   contents: read
 jobs:
-  build:
+  build-and-mcp-smoke:
     runs-on: windows-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '8.0.x'
-      - name: Restore
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Restore bridge
         run: dotnet restore src/AlexaBridge/AlexaBridge.csproj
-      - name: Build
+      - name: Restore simulator
+        run: dotnet restore src/AlexaSimulator/AlexaSimulator.csproj
+      - name: Build bridge
         run: dotnet build src/AlexaBridge/AlexaBridge.csproj --configuration Release --no-restore
+      - name: Build simulator
+        run: dotnet build src/AlexaSimulator/AlexaSimulator.csproj --configuration Release --no-restore
+      - name: Real MCP SDK client/server smoke test
+        run: python scripts/run-protocol-smoke.py

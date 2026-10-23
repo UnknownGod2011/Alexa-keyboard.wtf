@@ -1,5 +1,7 @@
 # Progress
 
-2026-10-23: Initialized a separate Alexa development branch and committed an initial MCP server implementation with offline tools. Commit creation alone does not establish buildability or correctness.
+2026-10-23: Initialized a separate Alexa development branch and committed the initial local MCP bridge. The first Windows build workflows passed, but they did not execute protocol calls.
 
-Pending: .NET build, independent MCP client testing, simulator, Windows adapter verification, authentication, CI and a release candidate.
+2026-10-23: Added an independent official-SDK MCP console client with no-key interactive commands, plus a Windows CI protocol smoke test that starts the real server and exercises discovery, calls, persistence, invalid input, unknown tool, and Host/Origin defenses. **At commit time the new test was not yet executed; consult the corresponding GitHub Actions run before claiming success.** No interactive Windows GUI test has been performed.
+
+Pending: verified protocol CI result, authenticated local access, desktop GUI, deeper production adapter integration, Windows GUI verification, release candidate.

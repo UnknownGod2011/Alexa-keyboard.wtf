@@ -1,21 +1,23 @@
 # Implementation plan
 
-Source of truth: this GitHub repository and its current branch.
+Source of truth: this GitHub repository and its current branch. The original production repository `UnknownGod2011/keyboard.wtf` is strictly read-only.
 
-## Verified facts
-- The original production repository is `UnknownGod2011/keyboard.wtf`, a .NET 8 Windows Forms app; it is read-only.
-- The initial Alexa repository was empty.
-- The current code uses ModelContextProtocol.AspNetCore 2.3.0 and a standalone local ASP.NET Core host.
+## Implemented
+- Standalone .NET 8 ASP.NET Core MCP server using `ModelContextProtocol.AspNetCore` 2.3.0, bound to loopback.
+- Offline tools for status, Notepad launch (Windows only), and bounded task handoff save/load.
+- Independent no-key .NET console simulator using `ModelContextProtocol.Core` 2.3.0 and actual Streamable HTTP MCP client.
+- A headless integration smoke test launches both processes, initializes MCP, discovers tools, exercises status and task persistence, checks input rejection, unknown tools, and Host/Origin protections.
+- Windows CI builds both projects and executes the real MCP smoke test. Inspect the latest workflow conclusion before marking it passed.
 
-## Next priority actions
-1. Run `dotnet restore`, `dotnet build`, and actual MCP client calls on a compatible machine. Fix SDK API discrepancies; do not claim success until confirmed.
-2. Add automated integration tests covering initialize, tools/list, tools/call, invalid inputs and unavailable services.
-3. Add local request authentication or session protection. Origin/Host checks are not authentication.
-4. Implement a small first-party simulator that invokes the actual MCP client transport, without direct tool calls.
-5. Extract a narrow, permission-aware adapter from selected production services, without writing to production.
-6. Run on an interactive Windows desktop and verify a launched window and results. Check cancellation, shutdown and multiple requests.
-7. Document correct build/test commands and add Windows CI.
-8. Validate fresh clone, secret scan, licenses, and safe release packaging before merging into main.
+## Next priorities
+1. Fix any SDK client/server integration failures exposed by the new CI smoke test. Verify actual protocol version negotiated.
+2. Add authenticated local access/session protection. Loopback and Origin/Host validation are insufficient against malicious local clients.
+3. Improve tool error semantics: invalid arguments and business failures should set MCP `isError` rather than return success-shaped strings.
+4. Add a polished Windows desktop simulator that calls MCP (console simulator is only a functional baseline).
+5. Inspect the original production app and reuse narrow permission-aware adapters without writing to production.
+6. Run interactive Windows desktop tests; process-start success does not prove Notepad is visible.
+7. Add cancellation/concurrency/timeout tests and independent raw HTTP protocol checks.
+8. Validate a fresh clone, license/attribution, release packaging, and README before merging to main.
 
 ## Acceptance gate
-Do not label this production-ready without an actual Windows run, real MCP interoperability tests, a functional simulator, authentication review, and a reproducible install procedure.
+Do not label this production-ready without real MCP interoperability, authenticated local access, interactive Windows validation, a usable desktop UI, and reproducible install instructions.
