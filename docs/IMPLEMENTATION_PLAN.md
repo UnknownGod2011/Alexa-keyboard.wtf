@@ -1,23 +1,25 @@
 # Implementation plan
 
-Source of truth: this GitHub repository and its current branch. The original production repository `UnknownGod2011/keyboard.wtf` is strictly read-only.
+Source of truth: the current GitHub branch. Original production repository `UnknownGod2011/keyboard.wtf` is strictly read-only.
 
-## Implemented
-- Standalone .NET 8 ASP.NET Core MCP server using `ModelContextProtocol.AspNetCore` 2.3.0, bound to loopback.
-- Offline tools for status, Notepad launch (Windows only), and bounded task handoff save/load.
-- Independent no-key .NET console simulator using `ModelContextProtocol.Core` 2.3.0 and actual Streamable HTTP MCP client.
-- A headless integration smoke test launches both processes, initializes MCP, discovers tools, exercises status and task persistence, checks input rejection, unknown tools, and Host/Origin protections.
-- Windows CI builds both projects and executes the real MCP smoke test. Inspect the latest workflow conclusion before marking it passed.
+## Verified foundation (2026-10-23)
 
-## Next priorities
-1. Fix any SDK client/server integration failures exposed by the new CI smoke test. Verify actual protocol version negotiated.
-2. Add authenticated local access/session protection. Loopback and Origin/Host validation are insufficient against malicious local clients.
-3. Improve tool error semantics: invalid arguments and business failures should set MCP `isError` rather than return success-shaped strings.
-4. Add a polished Windows desktop simulator that calls MCP (console simulator is only a functional baseline).
-5. Inspect the original production app and reuse narrow permission-aware adapters without writing to production.
-6. Run interactive Windows desktop tests; process-start success does not prove Notepad is visible.
-7. Add cancellation/concurrency/timeout tests and independent raw HTTP protocol checks.
-8. Validate a fresh clone, license/attribution, release packaging, and README before merging to main.
+- Standalone .NET 8 ASP.NET Core MCP server, official C# SDK 2.3.0, loopback-only endpoint.
+- No-key .NET console simulator connects through the SDK's Streamable HTTP client, not direct method calls.
+- Windows CI run `39977136792` passed: restore/build both projects; real SDK client initialized, discovered tools, invoked status and save/load; rejected traversal-style name and unknown tool; denied untrusted Host/Origin.
+- No interactive Windows GUI actions were executed in CI.
 
-## Acceptance gate
-Do not label this production-ready without real MCP interoperability, authenticated local access, interactive Windows validation, a usable desktop UI, and reproducible install instructions.
+## Highest-priority next tasks
+
+1. **Local access control:** implement and test authentication/session protection for all MCP calls. Loopback plus Host/Origin checks are not enough; maintain a smooth no-key local client experience.
+2. **Action authorization:** require an explicit user authorization signal at the server for side-effecting tools; the console confirmation alone is insufficient for other clients.
+3. **Tool error semantics:** invalid input and business failures should return MCP `isError` rather than success-shaped text.
+4. **Desktop UI:** create a small Windows GUI simulator that uses the same genuine MCP client transport.
+5. **Production adapter reuse:** inspect permission policy and existing working app/window services in the read-only original; extract only narrow, verified capabilities.
+6. **Interactive Windows test:** verify actual Notepad window visibility, cancellation, cleanup and permissions on a real interactive desktop.
+7. **Broader protocol tests:** invalid JSON-RPC, timeouts, concurrency, restart, clean shutdown and independent raw HTTP client.
+8. **Distribution:** verify fresh clone, licensing/attribution, packaging and neutral README before merging to main.
+
+## Release gate
+
+Do not call this release-ready until access control, real desktop UI, interactive Windows validation, robust tests, and reproducible packaging are complete.

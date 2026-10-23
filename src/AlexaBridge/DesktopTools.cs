@@ -43,7 +43,7 @@ public static class DesktopTools
         }
     }
 
-    [McpServerTool, Description("Save a small task handoff in the companion's private local application data. Do not supply credentials, secrets or private text.")]
+    [McpServerTool(Name = "save_task_handoff", OpenWorld = false), Description("Save a small task handoff in the companion's private local application data. Do not supply credentials, secrets or private text.")]
     public static string SaveTaskHandoff(
         [Description("Short session name, letters/numbers/spaces/dash/underscore only, up to 64 characters.")] string name,
         [Description("Task summary up to 1500 characters; never include secrets.")] string summary)
@@ -70,7 +70,7 @@ public static class DesktopTools
         catch (UnauthorizedAccessException) { return "Task handoff could not be saved (access denied)."; }
     }
 
-    [McpServerTool, Description("Retrieve an existing task handoff from this companion's local application data.")]
+    [McpServerTool(Name = "load_task_handoff", ReadOnly = true, OpenWorld = false), Description("Retrieve an existing task handoff from this companion's local application data.")]
     public static string LoadTaskHandoff(
         [Description("Previously saved task handoff name.")] string name)
     {
