@@ -7,5 +7,6 @@
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="../../src/AlexaBridge/AlexaBridge.csproj" />
+    <ProjectReference Include="../../src/AlexaClient/AlexaClient.csproj" />
   </ItemGroup>
 </Project>

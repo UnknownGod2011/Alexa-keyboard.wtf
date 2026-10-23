@@ -1,110 +1,147 @@
 # keyboard.wtf × Alexa — Local MCP companion
 
-An independent Windows-oriented companion exposing a small, safe subset of desktop actions through the Model Context Protocol (MCP). This project is inspired by the original [keyboard.wtf](https://github.com/UnknownGod2011/keyboard.wtf), but runs separately and does not require the original application to be installed.
+A standalone Windows companion that exposes a small set of desktop capabilities through the Model Context Protocol. A console simulator and a Windows graphical simulator use the same authenticated MCP client over Streamable HTTP.
 
-**Status:** early functional prototype. A real MCP client/server round-trip has passed automated Windows CI, but the interactive Windows desktop, GUI, and production Alexa+ integration remain unverified or unfinished. Server-side launch approval and stronger validation are implemented on this branch; see CI for verification status. This is not an official Amazon Alexa application.
+**Status:** development preview. Automated Windows protocol and regression checks pass for the security foundation. The graphical simulator is newly implemented and its build is being validated; visible Windows interaction and production Alexa+ connectivity remain unverified. This is an independent application, not an official Amazon Alexa product.
 
-## Features available now
+## Implemented features
 
-- **Real Streamable HTTP MCP:** official C# SDK 2.3.0, server at `http://127.0.0.1:32178/mcp`.
-- **Automatic local bearer authentication:** each server startup creates a fresh random 256-bit credential in the current user's local application data. The included simulator reads it automatically, without a cloud account or API key.
-- **No-key console simulator:** a separate .NET MCP client that discovers tools and calls them over HTTP; no AI account required.
-- **Desktop status:** reports non-sensitive process/platform information.
-- **Open Notepad:** requires fresh approval in the server's console for every launch. Clients cannot grant approval through MCP arguments. Headless hosts deny launches. A returned PID does not prove a visible window.
-- **Task handoffs:** save and load bounded, named task summaries from local application data.
-- **Automated protocol smoke:** starts server and client in separate processes, checks initialization, discovery, real tool calls, input rejection, unknown tools, local bearer authorization, and HTTP Host/Origin defenses.
+- Official C# MCP SDK 2.3.0, with a loopback Streamable HTTP endpoint.
+- Automatic local authentication: a new random 256-bit token for each server start, discovered by same-user clients.
+- No-key manual mode: discover tools, retrieve desktop status, and save/load task handoffs.
+- Windows graphical simulator: conversation/action history, connection state, discovered tools, handoff fields, reconnect, request cancellation, and real execution results.
+- Windows Notepad launch: disabled by default, requires operator opt-in and a fresh approval in the server console for each request.
+- Validation and storage failures return MCP tool errors; no simulated success responses.
+
+The original [keyboard.wtf](https://github.com/UnknownGod2011/keyboard.wtf) application is separate and is not required.
 
 ## Prerequisites
 
-- Windows 10/11 recommended; `open_notepad` is Windows-only.
-- .NET 8 SDK.
-- Internet access for the initial NuGet package restore.
-- Python 3.12+ **only if** you want to run the optional automated smoke test locally.
+- Windows 10/11 for the graphical simulator and Notepad.
+- .NET 8 SDK (including Windows desktop support).
+- Network access for the first NuGet restore.
+- Python 3.12+ only for the protocol smoke script.
 
-## Run from a fresh clone
+The bridge, shared client and console can also build for .NET 8 on non-Windows systems; Windows actions are unavailable there.
 
-The implementation currently lives on the development branch; `main` is not yet release-ready.
+## Build and run
+
+The implementation currently lives on the development branch; `main` is not a runnable release yet.
 
 ```powershell
 git clone https://github.com/UnknownGod2011/Alexa-keyboard.wtf.git
 cd Alexa-keyboard.wtf
 git switch codex/alexa-plus-completion
-dotnet restore src/AlexaBridge/AlexaBridge.csproj
-dotnet restore src/AlexaSimulator/AlexaSimulator.csproj
+dotnet build src/AlexaBridge/AlexaBridge.csproj -c Release
+dotnet build src/AlexaSimulator/AlexaSimulator.csproj -c Release
+dotnet build src/AlexaDesktop/AlexaDesktop.csproj -c Release
 ```
 
-**Terminal 1 — start the local MCP server:**
+**Terminal 1 — bridge:**
 
 ```powershell
-dotnet run --project src/AlexaBridge/AlexaBridge.csproj
+dotnet run --project src/AlexaBridge/AlexaBridge.csproj -c Release --no-build
 ```
 
-**Terminal 2 — start the independent no-key simulator:**
+**Terminal 2 — graphical simulator:**
 
 ```powershell
-dotnet run --project src/AlexaSimulator/AlexaSimulator.csproj
+dotnet run --project src/AlexaDesktop/AlexaDesktop.csproj -c Release --no-build
 ```
 
-Type `tools` to discover the actual MCP tools, `status` for a safe read-only action, `save` to record a non-sensitive task summary, and `load` to retrieve it. Type `notepad` to request a Windows Notepad launch. In Terminal 1, type the exact `approve <code>` shown by the server within 30 seconds, or `deny <code>` to reject it. Each code is valid for one pending request. Closing, cancelling, or timing out a request does not grant permission to a later request. Type `quit` to close the simulator; stop the server in Terminal 1 with Ctrl+C.
+Or use the console instead:
 
-The simulator is a **console application**, not yet a graphical or voice assistant. It uses the real MCP client transport and does not call desktop methods directly.
+```powershell
+dotnet run --project src/AlexaSimulator/AlexaSimulator.csproj -c Release --no-build
+```
 
-## Available MCP tools
+Run both processes as the same OS user. Start the bridge first. No cloud API key, account, or private configuration from the original application is needed.
+
+## No-key walkthrough
+
+1. Connect. The simulator initializes MCP and discovers the actual server tools.
+2. Choose **Desktop status** or type `status`.
+3. Enter a task name and a non-sensitive summary in the handoff fields. Choose **Save handoff**.
+4. Choose **Load handoff** to retrieve the persisted record through MCP.
+5. Request **Open Notepad**. By default the bridge returns a denial.
+6. To test an actual launch, stop the bridge and restart it in Terminal 1 with:
+
+```powershell
+$env:ALEXA_ALLOW_DESKTOP_ACTIONS = "1"
+dotnet run --project src/AlexaBridge/AlexaBridge.csproj -c Release --no-build
+```
+
+Reconnect the simulator after the bridge restarts. Request Notepad again. In Terminal 1, type the exact `approve <code>` shown by the bridge within 30 seconds, or `deny <code>`. Each code applies only to the pending request. MCP clients cannot grant approval through tool arguments.
+
+Verify the Notepad window yourself: a returned PID reports process launch, not verified window visibility. Headless/redirected hosts deny launches even when the environment opt-in is set. To explicitly deny launches, pass `-- --deny-actions` to the bridge.
+
+Close the simulator when finished, then use Ctrl+C in Terminal 1 to stop the bridge. A cancelled request does not undo an action already accepted by Windows.
+
+### Manual commands
+
+| Command | Action |
+| --- | --- |
+| `tools` | Discover real MCP tools |
+| `status` | Get desktop companion status |
+| `save` | Save the named summary (console asks for fields) |
+| `load` | Load a saved summary |
+| `notepad` / `open notepad` | Request a server-approved Windows launch |
+
+The graphical simulator accepts this explicit vocabulary. Other text shows help and does not execute a desktop action. It does not pretend to be a cloud conversational model.
+
+## MCP clients
+
+Endpoint: `http://127.0.0.1:32178/mcp`, Streamable HTTP.
 
 | Tool | Behavior |
 | --- | --- |
-| `get_desktop_status` | Returns OS/process information without modifying the desktop. |
-| `open_notepad` | Requests a Windows Notepad process launch; window visibility must be checked manually. |
-| `save_task_handoff` | Saves a bounded named task summary to local application data. |
-| `load_task_handoff` | Loads a previously saved task summary by name. |
+| `get_desktop_status` | Safe OS/process information and launch policy |
+| `save_task_handoff` | Write a named summary in dedicated local storage |
+| `load_task_handoff` | Read a validated saved summary |
+| `open_notepad` | Default-denied launch; operator opt-in plus per-request approval |
 
-Other compatible MCP clients can connect to `http://127.0.0.1:32178/mcp` using Streamable HTTP **with local bearer authentication**. The bridge creates a fresh credential on startup at `%LOCALAPPDATA%\\AlexaKeyboardBridge\\runtime\\mcp-auth-token` on Windows. A separate client running as the same OS user must read that file and send an `Authorization: Bearer <token>` header on **every MCP HTTP request**. Do not commit, log, or share this token. The included simulator handles this automatically. Use MCP initialization and tool discovery, not the `/health` route, to verify protocol compatibility.
+On Windows the bridge creates its token at `%LOCALAPPDATA%\AlexaKeyboardBridge\runtime\mcp-auth-token`. Other same-user clients must read it and send `Authorization: Bearer <token>` on every MCP request, including GET and DELETE. Never commit, log, or share the token. The included clients handle it automatically.
+
+The unauthenticated `/health` endpoint is for startup checks; it does not prove MCP interoperability.
 
 ## Tests
-
-Build both projects in Release mode:
 
 ```powershell
 dotnet build src/AlexaBridge/AlexaBridge.csproj -c Release
 dotnet build src/AlexaSimulator/AlexaSimulator.csproj -c Release
+dotnet build src/AlexaDesktop/AlexaDesktop.csproj -c Release
 python scripts/run-protocol-smoke.py
 dotnet run --project tests/AlexaBridge.Checks/AlexaBridge.Checks.csproj -c Release
 ```
 
-The smoke script starts the real server, waits for readiness, invokes the independent official-SDK client, and stops the server. It calls `open_notepad` against a headless server to verify denial without launching Notepad. It uses a temporary handoff directory, requires no API credentials, and does not prove a visible Windows UI. The separate regression checks use a recording launcher to test approval and cancellation without desktop side effects.
+The smoke script starts the real bridge, initializes the independent SDK client, discovers tools, and tests authenticated calls, handoff persistence, invalid inputs, missing records, denied launches, unknown tools, and Host/Origin/authentication defenses. It uses temporary handoff storage and does not launch Notepad.
 
-The Windows GitHub Actions workflow passed this protocol smoke on commit `c9c8a4a`: [workflow run 39977136792](https://github.com/UnknownGod2011/Alexa-keyboard.wtf/actions/runs/39977136792). See [test evidence](docs/TEST_RESULTS.md).
+The regression executable tests permission denials, cancellation before side effects, launch failure reporting, storage validation, corrupt files, concurrent atomic saves, and manual command routing. Its recording launcher is a test adapter, not evidence of a real desktop launch.
 
-## Architecture
+Windows CI builds the graphical simulator but does not establish its visual layout or visible desktop behavior. See [test evidence](docs/TEST_RESULTS.md) and [interactive Windows checks](docs/WINDOWS_MANUAL_TEST.md).
 
-```mermaid
-flowchart LR
-    User[User in local console] --> Client[AlexaSimulator: MCP SDK client]
-    Client -->|Streamable HTTP| Server[AlexaBridge: MCP SDK server]
-    Server --> Tools[Validated desktop tools]
-    Tools --> OS[Windows or local task storage]
-    OS --> Tools --> Server --> Client
-```
+## Security and privacy
 
-The server binds only to `127.0.0.1:32178`, checks Host and Origin headers, and exposes no general shell execution tool. The simulator and server are separate processes.
+- Loopback binding, Host/Origin validation, and per-start local bearer authentication.
+- A file lease prevents a second bridge instance from replacing a running server's token.
+- Notepad resolves to the Windows system directory, never arbitrary commands, PATH entries, or caller-supplied executables.
+- Saved summaries are plaintext under local application data. Names and contents are validated, writes are atomic, and corrupt/oversized/version-mismatched records fail.
+- An authenticated client can write bounded summaries without per-write confirmation; it cannot select an arbitrary filesystem path.
+- Same-user malware can read the credential and local data. This does not provide isolation from malicious programs running as your OS account.
+- Do not tunnel or expose the bridge to the Internet. Remote Alexa+ access requires a separate authenticated architecture.
 
-## Privacy and security
+## AI and Alexa+ connectivity
 
-The server requires a per-start random local bearer token for all MCP methods, in addition to loopback binding and Host/Origin checks. The token is stored under the current user's local application data directory, protected by its inherited OS permissions (and explicit Unix file mode on Unix). **This does not protect against malicious processes running as the same OS user**, which can read the token. Do not tunnel, proxy, or expose this endpoint to the public Internet. Only run it on a computer you trust.
-
-Saved task summaries are stored as **plaintext** under the current user's local application data directory; never store credentials or sensitive content. Authenticated clients can save small task summaries in the dedicated handoff directory. Invalid names, corrupt records, unsupported versions, and persistence failures return MCP tool errors. `open_notepad` requires approval in the server console, independently of the requesting client. Start the server with `-- --deny-actions` to explicitly disable desktop launches (also enforced when standard input is redirected). Cancellation before launch prevents it; once Windows has accepted a launch, cancellation cannot undo it.
-
-## Optional AI and Alexa+ integration
-
-No external API key is required for the implemented features. Conversational AI, a graphical/voice simulator, and production Alexa+ connectivity are **not yet implemented**. The local MCP server is not automatically accessible from Amazon's cloud. Remote connectivity would require a separately designed, authenticated integration.
+No external API keys are required for the implemented tools. Optional conversational AI and voice are not implemented yet. Production Alexa+ registration, authentication, networking, and end-to-end connectivity are also not implemented or verified. The local simulator demonstrates the MCP execution path without claiming Amazon cloud access.
 
 ## Troubleshooting
 
-- **Connection refused:** start the bridge in Terminal 1 before launching the simulator.
-- **HTTP 401 / missing local credential:** run bridge and simulator as the same OS user, start the bridge first, and restart the simulator after a bridge restart (credentials rotate). This is a local authorization token, not an AI provider API key.
-- **Port 32178 in use:** close the other instance of the bridge; only one can bind the fixed port.
-- **Notepad unavailable:** `open_notepad` requires Windows and a usable interactive desktop.
-- **Build failure:** verify .NET 8 SDK and network access for package restore.
-- **No source after cloning:** switch to `codex/alexa-plus-completion` until the verified release is merged into `main`.
+- **Disconnected / HTTP 401:** start the bridge under the same OS user; reconnect after every bridge restart because its credential rotates.
+- **Port or instance lock in use:** close the existing bridge before starting another.
+- **Notepad denied:** enable the operator policy before server start, keep its console interactive, then approve the individual request there.
+- **Invalid handoff name:** use 1–64 ASCII letters/digits/internal spaces/dash/underscore; no leading/trailing spaces or Windows device names.
+- **Save/load error:** check local data permissions and record format. Never place credentials in summaries.
+- **Build failure:** verify .NET 8 SDK and NuGet connectivity.
+- **No source after clone:** switch to the development branch until validated functionality is integrated into `main`.
 
-See [implementation plan](docs/IMPLEMENTATION_PLAN.md) and [progress](docs/PROGRESS.md) for current limitations and next steps.
+See [architecture](docs/ARCHITECTURE.md), [progress](docs/PROGRESS.md), and [release readiness](docs/RELEASE_READINESS.md).

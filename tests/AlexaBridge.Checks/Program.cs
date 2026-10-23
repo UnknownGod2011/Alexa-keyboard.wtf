@@ -9,28 +9,36 @@ try
 {
     var data = Path.Combine(root, "data");
     var store = new HandoffStore(data);
+    Check(AlexaClient.ManualCommands.Parse(" OPEN   NOTEPAD ") == AlexaClient.ManualCommand.Notepad,
+        "manual command tolerates case and spacing");
+    Check(AlexaClient.ManualCommands.Parse("open notepad && delete everything") == AlexaClient.ManualCommand.Help,
+        "unsupported free text never selects a desktop action");
+    Check(AlexaClient.ManualCommands.Parse("load handoff") == AlexaClient.ManualCommand.Load,
+        "load remains distinct from save");
     var launcher = new RecordingLauncher();
-    var tools = new DesktopTools(store, new FixedApproval(false), launcher);
+    var tools = new DesktopTools(store, new FixedApproval(false), launcher, new DesktopActionPolicy(true));
 
+    var disabled = new DesktopTools(store, new FixedApproval(true), launcher, new DesktopActionPolicy(false));
+    Check((await disabled.OpenNotepad(CancellationToken.None)).IsError == true && launcher.Calls == 0, "operator opt-in required even when approval adapter would approve");
     var denied = await tools.OpenNotepad(CancellationToken.None);
     Check(denied.IsError == true && launcher.Calls == 0, "denied launch has no side effect");
 
     var headless = new ConsoleActionApproval(denyActions: true);
     Check(!await headless.ApproveAsync("launch", CancellationToken.None), "headless approval denies");
 
-    var approved = new DesktopTools(store, new FixedApproval(true), launcher);
+    var approved = new DesktopTools(store, new FixedApproval(true), launcher, new DesktopActionPolicy(true));
     Check((await approved.OpenNotepad(CancellationToken.None)).IsError != true && launcher.Calls == 1,
         "approved launch calls only the allowlisted adapter once");
 
     using var cancel = new CancellationTokenSource();
-    var cancellingTools = new DesktopTools(store, new CancellingApproval(cancel), launcher);
+    var cancellingTools = new DesktopTools(store, new CancellingApproval(cancel), launcher, new DesktopActionPolicy(true));
     await ExpectAsync<OperationCanceledException>(() => cancellingTools.OpenNotepad(cancel.Token));
     Check(launcher.Calls == 1, "cancellation after approval prevents launch");
 
-    var unsupported = new DesktopTools(store, new FixedApproval(true), new RecordingLauncher { Supported = false });
+    var unsupported = new DesktopTools(store, new FixedApproval(true), new RecordingLauncher { Supported = false }, new DesktopActionPolicy(true));
     Check((await unsupported.OpenNotepad(CancellationToken.None)).IsError == true, "unsupported platform is a tool error");
 
-    var failed = new DesktopTools(store, new FixedApproval(true), new RecordingLauncher { Fail = true });
+    var failed = new DesktopTools(store, new FixedApproval(true), new RecordingLauncher { Fail = true }, new DesktopActionPolicy(true));
     Check((await failed.OpenNotepad(CancellationToken.None)).IsError == true, "launch failure is a tool error");
 
     foreach (var name in new[] { "../escape", "..", "", "CON", "LPT1", " trailing ", "path/name", "x:y" })

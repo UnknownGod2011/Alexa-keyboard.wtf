@@ -28,7 +28,7 @@ public sealed class NotepadLauncher : INotepadLauncher
 }
 
 [McpServerToolType]
-public sealed class DesktopTools(HandoffStore store, IActionApproval approval, INotepadLauncher launcher)
+public sealed class DesktopTools(HandoffStore store, IActionApproval approval, INotepadLauncher launcher, DesktopActionPolicy policy)
 {
     [McpServerTool(Name = "get_desktop_status", ReadOnly = true, OpenWorld = false), Description("Return basic non-sensitive information about this MCP desktop companion.")]
     public CallToolResult GetDesktopStatus() => Result(JsonSerializer.Serialize(new {
@@ -37,6 +37,7 @@ public sealed class DesktopTools(HandoffStore store, IActionApproval approval, I
         processId = Environment.ProcessId,
         mode = "offline-manual",
         supportsApplicationLaunch = launcher.Supported,
+        desktopActionsEnabled = policy.Enabled,
         localAuthentication = "per-launch-bearer",
         launchApproval = "server-console-per-request"
     }));
@@ -44,6 +45,8 @@ public sealed class DesktopTools(HandoffStore store, IActionApproval approval, I
     [McpServerTool(Name = "open_notepad", OpenWorld = false), Description("Request Windows Notepad launch. A fresh approval in the server's local console is required; MCP arguments cannot grant approval.")]
     public async Task<CallToolResult> OpenNotepad(CancellationToken cancellationToken)
     {
+        if (!policy.Enabled)
+            return Result("Denied: desktop application launches are disabled by the server operator. Set ALEXA_ALLOW_DESKTOP_ACTIONS=1 before starting the bridge to opt in; each launch will still require local approval.", true);
         if (!launcher.Supported) return Result("Not supported: this action requires Windows.", true);
         if (!await approval.ApproveAsync("Open Windows Notepad on this PC", cancellationToken))
             return Result("Denied: Notepad was not launched. Approve the individual request in the server console; headless hosts deny launches.", true);
@@ -95,4 +98,6 @@ public sealed class DesktopTools(HandoffStore store, IActionApproval approval, I
         Content = [new TextContentBlock { Text = text }]
     };
 }
+
+public sealed record DesktopActionPolicy(bool Enabled);
 

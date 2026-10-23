@@ -1,31 +1,23 @@
 # Implementation plan
 
-Source of truth: the current GitHub branch. Original production repository `UnknownGod2011/keyboard.wtf` is strictly read-only.
+Production UnknownGod2011/keyboard.wtf is strictly read-only. All changes belong to this repository.
 
-## Verified foundation (2026-10-23)
+## Implemented foundation
 
-- Standalone .NET 8 ASP.NET Core MCP server, official C# SDK 2.3.0, loopback-only endpoint.
-- No-key .NET console simulator connects through the SDK's Streamable HTTP client, not direct method calls.
-- Windows CI run `39977136792` passed: restore/build both projects; real SDK client initialized, discovered tools, invoked status and save/load; rejected traversal-style name and unknown tool; denied untrusted Host/Origin.
-- No interactive Windows GUI actions were executed in CI.
+- Official-SDK Streamable HTTP bridge and independent no-key MCP clients.
+- Per-start local credential and single-instance token lease.
+- Operator opt-in plus per-request host-console approval for Notepad.
+- MCP tool errors, validated atomic handoff storage, cancellation before launch.
+- Console and newly implemented Windows Forms simulators share authenticated transport.
+- Windows CI validates protocol, permissions, persistence and compilation.
 
-## Highest-priority next tasks
+## Next steps
 
-1. **Local access control (implemented, CI verification pending):** the bridge rotates a cryptographically random local bearer token on startup, the no-key simulator automatically reads it, and all MCP HTTP methods reject missing/invalid tokens. Confirm the latest CI smoke passes. This does not protect against malicious same-user programs or provide secure remote access.
-2. **Action authorization (next priority):** require a real server-enforced user approval signal for desktop side effects. A client holding the bearer token can currently invoke Notepad without a fresh on-device approval; the simulator's console confirmation is insufficient for other clients.
-3. **Tool error semantics:** invalid input and business failures should return MCP `isError` rather than success-shaped text.
-4. **Desktop UI:** create a small Windows GUI simulator that uses the same genuine MCP client transport.
-5. **Production adapter reuse:** inspect permission policy and existing working app/window services in the read-only original; extract only narrow, verified capabilities.
-6. **Interactive Windows test:** verify actual Notepad window visibility, cancellation, cleanup and permissions on a real interactive desktop.
-7. **Broader protocol tests:** invalid JSON-RPC, timeouts, concurrency, restart, clean shutdown and independent raw HTTP client.
-8. **Distribution:** verify fresh clone, licensing/attribution, packaging and neutral README before merging to main.
+1. Verify current combined-policy and GUI changes in CI; fix failures.
+2. Complete interactive Windows manual checks (visible UI, approval/denial, cancellation, Notepad visibility, restart and shutdown).
+3. Package a reproducible preview without secrets; test the package on Windows.
+4. Add meaningful approved workspace restoration through the same permission/MCP path.
+5. Optional AI/voice only after the no-key path is stable.
+6. Review release gates, integrate validated code into main, and avoid claiming unverified cloud Alexa connectivity.
 
-## Release gate
-
-Do not call this release-ready until access control, real desktop UI, interactive Windows validation, robust tests, and reproducible packaging are complete.
-
-## Interactive-session continuation
-
-- Retain the per-start token/file lease from the scheduled worker.
-- Validate new server-console approval, cancellation, MCP error semantics, and handoff storage through Windows CI.
-- Next: graphical MCP simulator, trustworthy desktop smoke procedure, and reproducible distribution. Do not merge to main while interactive Windows behavior and the remaining release gates are unverified.
+Use docs/PROGRESS.md, docs/TEST_RESULTS.md and docs/RELEASE_READINESS.md for evidence. Retain concurrent worker changes and never force-push.

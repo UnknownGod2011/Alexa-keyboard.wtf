@@ -26,6 +26,8 @@ jobs:
         run: dotnet build src/AlexaBridge/AlexaBridge.csproj --configuration Release --no-restore
       - name: Build simulator
         run: dotnet build src/AlexaSimulator/AlexaSimulator.csproj --configuration Release --no-restore
+      - name: Build graphical Windows companion
+        run: dotnet build src/AlexaDesktop/AlexaDesktop.csproj --configuration Release
       - name: Real MCP SDK client/server smoke test
         run: python scripts/run-protocol-smoke.py
       - name: Permission, cancellation and persistence regression checks

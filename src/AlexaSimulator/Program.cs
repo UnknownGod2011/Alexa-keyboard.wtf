@@ -8,20 +8,8 @@ const string Endpoint = "http://127.0.0.1:32178/mcp";
 try
 {
     using var connectTimeout = new CancellationTokenSource(TimeSpan.FromSeconds(20));
-    // Server generates this short-lived local credential automatically. Never log it.
-    var localData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-    if (string.IsNullOrWhiteSpace(localData)) throw new IOException("Local application data directory unavailable.");
-    var tokenFile = Path.Combine(localData, "AlexaKeyboardBridge", "runtime", "mcp-auth-token");
-    var localToken = File.ReadAllText(tokenFile).Trim();
-    if (localToken.Length != 64 || !localToken.All(Uri.IsHexDigit))
-        throw new IOException("Invalid local MCP authentication file. Restart the bridge.");
-    await using var client = await McpClient.CreateAsync(
-        new HttpClientTransport(new HttpClientTransportOptions {
-            Endpoint = new Uri(Endpoint),
-            TransportMode = HttpTransportMode.StreamableHttp,
-            AdditionalHeaders = new Dictionary<string, string> { ["Authorization"] = "Bearer " + localToken }
-        }),
-        cancellationToken: connectTimeout.Token);
+    await using var connection = await AlexaClient.BridgeConnection.ConnectAsync(connectTimeout.Token);
+    var client = connection.Client;
 
     if (args.Contains("--smoke", StringComparer.OrdinalIgnoreCase))
     {

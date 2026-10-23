@@ -9,6 +9,8 @@ var builder = WebApplication.CreateBuilder(args.Where(a => a != "--deny-actions"
 builder.Services.AddSingleton(new HandoffStore(HandoffStore.DefaultRoot()));
 builder.Services.AddSingleton<IActionApproval>(new ConsoleActionApproval(args.Contains("--deny-actions", StringComparer.Ordinal)));
 builder.Services.AddSingleton<INotepadLauncher, NotepadLauncher>();
+builder.Services.AddSingleton(new DesktopActionPolicy(
+    Environment.GetEnvironmentVariable("ALEXA_ALLOW_DESKTOP_ACTIONS") == "1" && !args.Contains("--deny-actions", StringComparer.Ordinal)));
 // Never inherit ASP.NET's default wildcard binding: this controls a desktop.
 builder.WebHost.UseUrls("http://127.0.0.1:32178");
 builder.Services.AddMcpServer()
