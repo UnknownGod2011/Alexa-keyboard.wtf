@@ -18,7 +18,7 @@ A standalone Windows companion that exposes a small set of desktop capabilities 
 
 ![Windows companion control render](docs/images/companion-windows.png)
 
-*Actual Windows control render from CI after genuine MCP status/save/load calls. This is not proof of end-user desktop or Alexa cloud connectivity.*
+*Actual Windows control render from CI after genuine MCP calls. Speech transcripts in this test use a recording adapter; this does not prove microphone, end-user desktop or Alexa cloud behavior.*
 
 The original [keyboard.wtf](https://github.com/UnknownGod2011/keyboard.wtf) application is separate and is not required.
 
@@ -171,7 +171,7 @@ The regression executable tests permission denials, cancellation before side eff
 
 An independent Python HTTP client additionally checks MCP `2025-11-25` negotiation, initialization lifecycle, argument schemas, concurrent calls, and protocol errors. Startup tests reject a second server without rotating its live token; shutdown tests require authentication and verify credential cleanup. Runtime and handoff directories are isolated during smoke tests. Windows CI also exercises published DLLs and the extracted launcher from a directory with spaces. It verifies that the launcher refuses a foreign listener and that shutdown rejects an owner-process mismatch.
 
-Windows CI exercises graphical controls over MCP and captures actual control renders at standard and compact sizes. An opt-in isolated native fixture also calls the real workspace tools through the SDK, supplies test-only local-console denial/approval, launches actual Windows Notepad, observes its owned visible window and captures that window. The production host is separately tested for headless denial; no network approval bypass is added. Native synthesis produces WAV audio without using a microphone or speakers. These checks do not establish human consent UX or end-user audio hardware behavior. See [test evidence](docs/TEST_RESULTS.md) and [interactive Windows checks](docs/WINDOWS_MANUAL_TEST.md).
+Windows CI exercises graphical controls over MCP and captures actual control renders at standard and compact sizes. An opt-in isolated native fixture also calls the real workspace tools through the SDK, supplies test-only local-console denial/approval, launches actual Windows Notepad, observes its owned visible window and captures that window. The production host is separately tested for headless denial; no network approval bypass is added. Native synthesis produces WAV audio without using a microphone or speakers. These checks do not establish human consent UX or end-user audio hardware behavior. The [native Notepad capture](docs/images/notepad-ci.png) is from an actual owned window on the Windows runner. See [test evidence](docs/TEST_RESULTS.md) and [interactive Windows checks](docs/WINDOWS_MANUAL_TEST.md).
 
 ## Security and privacy
 
@@ -207,7 +207,7 @@ Choose **Read last** to read up to 500 characters from the latest displayed resp
 
 Hosted GUI tests use a recording voice adapter to verify button routing, transcript review, cancellation and manual-mode recovery. Actual microphone recognition, audible output and hardware cleanup remain unverified until the interactive Windows procedure is run. The adapter uses Microsoft's [System.Speech](https://www.nuget.org/packages/System.Speech/10.0.13).
 
-Production Alexa+ registration, authentication, networking and end-to-end connectivity remain unfinished. The local simulator does not claim Amazon cloud access.
+Production Alexa+ registration, authentication, networking and end-to-end connectivity remain unfinished. The local simulator does not claim Amazon cloud access. See the [remote integration boundary](docs/ALEXA_REMOTE_INTEGRATION.md) for researched requirements, proposed pairing design and external blockers.
 
 ## Troubleshooting
 

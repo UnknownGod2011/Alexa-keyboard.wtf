@@ -1,35 +1,33 @@
 # Release readiness
 
-This is a development preview, not a verified release.
+Milestone: independently runnable **local Windows MCP development preview**. The core preview has implementation and Windows evidence sufficient for integration into the default branch after the exact integration head passes CI. This is not general-availability certification or production Alexa+ connectivity.
 
 | Criterion | Evidence / state |
 | --- | --- |
-| Production repository untouched | Read-only reference inspection only; all writes target Alexa repository |
-| Real official-SDK MCP initialize/discover/call | Passed Windows CI |
-| No AI key required | Passed protocol smoke |
-| Local authentication | Passed Windows CI |
-| Default-denied launches | Passed scheduled-worker and combined policy CI |
-| Per-action host approval, cancellation, truthful errors | Passed direct approval lifecycle, recording-adapter and headless MCP checks |
-| Combined policy and graphical simulator build | Passed Windows CI 39987052287 |
-| Hosted graphical control events/render | Passed CI 39988366057; captured control render visually inspected |
-| Visible simulator behavior | Interactive end-user desktop still unverified |
-| Actual Notepad window | Unverified; interactive Windows required |
-| Fresh extracted preview package | Passed CI 39989264504, including path with spaces, actual MCP call and cleanup |
-| Optional AI text | Contract/no-key UI tests passed CI 40016028105; credential-backed request unverified |
-| Voice | Explicit Dictate/Read last implementation under validation; actual microphone/speaker behavior unverified |
-| Production Alexa+ connectivity | Not implemented or verified |
-| Fixed endpoint under inherited configuration | Passed CI 39991652332 |
-| Approved saved project workspaces | Passed CI 40014939575; actual Explorer/Notepad windows still unverified |
-| Regression checks | 114 passed in Windows CI 40016028105 |
-| Ready for main / public release | No; remaining gates must be completed |
+| Production repository preserved | Read-only reference inspection; writes target Alexa repository only |
+| Official SDK and Streamable HTTP | SDK 2.3.0; independent raw MCP 2025-11-25 and SDK calls pass |
+| No-key meaningful workflow | Save/restore via actual MCP; native Explorer approved-folder and Notepad windows observed |
+| Local security | Bearer lease/rotation, Host/Origin, fixed binding and owned shutdown pass |
+| Side-effect policy | Operator opt-in, fresh local challenge, denial/replay/expiry/cancel/EOF checks pass |
+| Workspace safety | Root/path/version/identity/atomicity and immutable-consent tests pass |
+| Simulator uses MCP | Source/published GUI and console exercise actual SDK transport |
+| GUI controls and layout | Actual button/dialog handlers and standard/compact bounds pass; real renders inspected |
+| Native Windows action | CI 40018157021 observed exact Explorer directory and owned visible Notepad after MCP restore |
+| Approval evidence scope | Native fixture simulates local console replies using the real approval service; human UX remains unverified |
+| Optional AI | Fake HTTP contracts and no-key recovery pass; externally configured key/model; actual account unverified |
+| Optional speech | Recording-adapter UI tests pass; native synthesis generates WAV; microphone/speaker behavior unverified |
+| Builds and regression checks | 115 checks and all Windows pipeline stages pass on functional f394c08 |
+| Fresh checkout / extracted preview | Windows checkout/restore/build and extracted launcher, including path with spaces, pass |
+| Package/licenses/secrets | Downloaded 89-file preview inspected; 19 package entries, required runtimes/notices and no credential files |
+| Default branch | Pending PR #2 integration and verification; check current GitHub state |
+| Production Alexa+ | Not implemented/deployed/verified; separate researched design and account/hosting blockers |
+| Broad production release | Not claimed; external verification below remains |
 
-Do not infer visible Windows correctness from hosted CI. See WINDOWS_MANUAL_TEST.md.
+## External verification still required
 
-## Remaining work by priority
+- Run WINDOWS_MANUAL_TEST.md on supported end-user Windows 10/11: actual console consent, scaling, restart/cancellation and cleanup.
+- Verify microphone recognition, audible read-aloud and hardware release on cancellation/close. A generated WAV or recording adapter does not prove these.
+- Verify optional AI with the user's own configured account without logging keys. Fake HTTP is not proof of provider availability/account access.
+- If pursuing remote Alexa+, authorize a separate hosting/OAuth/pairing implementation and complete real linking/simulator/device checks. Do not tunnel the current loopback bearer endpoint.
 
-1. Verify real end-user Windows desktop behavior, including Notepad visibility, consent UX, cancellation, restart and shutdown. Hosted control renders are not a substitute.
-2. Verify real workspace folder/Notepad visibility and consent UX. Versioned approved-folder restoration is implemented; it does not restore editor tabs or arbitrary application state.
-3. Complete voice build/control validation and real Windows microphone/speaker checks; verify configured AI with an actual account. Preserve no-key manual operation.
-4. Design and verify actual remote Alexa+ registration, authentication and pairing if external access becomes available. Localhost is not cloud connectivity.
-
-The current deliverable can be integrated into the development branch as a tested local preview. These remaining gates prevent claiming a final release or merging as a finished product into main.
+These states must remain visible in README and reports. Default-branch integration of the tested local preview does not close them or authorize a production-ready claim. Disable the recurring engineering task only when the user's intended acceptance scope is genuinely satisfied or explicitly concluded.
