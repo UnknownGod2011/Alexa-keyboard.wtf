@@ -29,7 +29,7 @@ public sealed class LocalMcpAccess : IDisposable
         var directory = Path.Combine(localData, "AlexaKeyboardBridge", "runtime");
         Directory.CreateDirectory(directory);
         if (!OperatingSystem.IsWindows())
-            Directory.SetUnixFileMode(directory, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
+            File.SetUnixFileMode(directory, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
 
         var lease = new FileStream(Path.Combine(directory, "server.lock"),
             FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None);
