@@ -21,6 +21,7 @@ public sealed class CompanionForm : Form
     private readonly Button _cancel = new() { Text = "Cancel request", AutoSize = true, Enabled = false };
     private readonly List<Button> _shortcuts = [];
     private readonly CancellationTokenSource _lifetime = new();
+    private readonly OptionalChat _chat = OptionalChat.FromEnvironment();
     private readonly Font _cardTitleFont = new("Segoe UI Semibold", 10);
     private CancellationTokenSource? _operation;
     private Task _currentTask = Task.CompletedTask;
@@ -50,7 +51,7 @@ public sealed class CompanionForm : Form
         header.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
         var identity = new FlowLayoutPanel { Dock = DockStyle.Fill, FlowDirection = FlowDirection.TopDown, WrapContents = false };
         identity.Controls.Add(new Label { Text = "keyboard.wtf × Alexa", AutoSize = true, Font = new Font("Segoe UI Semibold", 21), ForeColor = Accent });
-        identity.Controls.Add(new Label { Text = "Local MCP simulator · Manual mode · No AI key required", AutoSize = true, ForeColor = Muted });
+        identity.Controls.Add(new Label { Text = "Local MCP simulator · Manual commands need no AI key", AutoSize = true, ForeColor = Muted });
         header.Controls.Add(identity, 0, 0);
         var connection = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.TopDown, WrapContents = false };
         connection.Controls.Add(_status);
@@ -110,6 +111,7 @@ public sealed class CompanionForm : Form
         Shown += (_, _) =>
         {
             AddCard("Welcome", "Connect to your local bridge, then choose an action. Save and load use the task fields on the right. Notepad requests require operator opt-in and a fresh approval in the bridge console.", Accent);
+            AddCard("Optional AI", _chat.Status, Muted);
             _currentTask = RunOperationAsync(ConnectAsync);
         };
         FormClosing += OnClosing;
@@ -137,7 +139,17 @@ public sealed class CompanionForm : Form
         {
             if (command == ManualCommand.Help)
             {
-                AddCard("Manual mode", "Supported commands: status, tools, save, load, open notepad, workspace policy, save workspace, load workspace, restore workspace. Workspace actions use the name and summary fields. Free-form AI conversation is not enabled.", Muted);
+                AddCard("Manual mode", "Supported commands: status, tools, save, load, open notepad, workspace policy, save workspace, load workspace, restore workspace. Workspace actions use the name and summary fields. Use ask <question> for configured optional AI; ai status or ai reset for its settings/history.", Muted);
+                return;
+            }
+            if (command == ManualCommand.AiStatus) { AddCard("Optional AI", _chat.Status, Muted); return; }
+            if (command == ManualCommand.AiReset) { await _chat.ResetAsync(ct); AddCard("Optional AI", "Ask/reply history cleared from this client session.", Muted); return; }
+            if (command == ManualCommand.Ask)
+            {
+                _status.Text = "Asking configured AI…";
+                var reply = await _chat.AskAsync(ManualCommands.AskPrompt(text), ct);
+                AddCard("AI answer · " + (reply.Refused ? "refusal" : reply.Incomplete ? "partial" : "text only"),
+                    reply.Text + "\n\nNo desktop action was executed by this answer.", reply.Incomplete || reply.Refused ? Muted : Accent);
                 return;
             }
             if (_bridge is null) throw new IOException("Connect to the bridge first.");
@@ -165,14 +177,14 @@ public sealed class CompanionForm : Form
                 AddCard("Approval", "If desktop launches are enabled, approve or deny this individual request in the server console. Cancel request stops waiting; a completed Windows launch cannot be undone.", Muted);
             _status.Text = "Executing · " + tool;
             var result = await _bridge.CallAsync(tool, arguments, ct);
-            var text = BridgeConnection.Text(result);
+            var resultText = BridgeConnection.Text(result);
             if (result.IsError != true && command is ManualCommand.Load or ManualCommand.LoadWorkspace)
             {
-                using var handoff = JsonDocument.Parse(text);
+                using var handoff = JsonDocument.Parse(resultText);
                 _summary.Text = handoff.RootElement.GetProperty("Summary").GetString() ?? "";
             }
             AddCard(tool + (result.IsError == true ? " · denied or failed" : " · completed"),
-                PresentResult(tool, text), result.IsError == true ? Color.Salmon : Accent);
+                PresentResult(tool, resultText), result.IsError == true ? Color.Salmon : Accent);
         });
     }
 
@@ -202,6 +214,8 @@ public sealed class CompanionForm : Form
         _operation = timeout;
         SetBusy(true);
         try { await operation(timeout.Token); }
+        catch (ChatUnavailableException ex)
+        { if (!_closing) AddCard("Optional AI unavailable", ex.Message, Color.Salmon); }
         catch (OperationCanceledException)
         {
             if (!_closing) AddCard("Request cancelled or timed out", "No success was reported. Check any desktop action before retrying it.", Muted);
@@ -353,6 +367,14 @@ public sealed class CompanionForm : Form
         _send.PerformClick();
         await _currentTask;
         Ensure(LastCard().Title == "Manual mode", "unsupported input selected a desktop action");
+        _input.Text = "ai status";
+        _send.PerformClick();
+        await _currentTask;
+        Ensure(LastCard().Title == "Optional AI" && LastCard().Body.Contains("disabled", StringComparison.Ordinal), "disabled AI status is not truthful");
+        _input.Text = "ask smoke question";
+        _send.PerformClick();
+        await _currentTask;
+        Ensure(LastCard().Title == "Optional AI unavailable" && _bridge is not null && _send.Enabled, "disabled AI did not preserve no-key MCP connection");
         _connect.PerformClick();
         await _currentTask;
         Ensure(_bridge is not null && _tools.Items.Count == 8 && _connect.Enabled, "reconnect failed");
@@ -408,6 +430,7 @@ public sealed class CompanionForm : Form
             _lifetime.Cancel();
             _lifetime.Dispose();
             _cardTitleFont.Dispose();
+            _chat.Dispose();
         }
         base.Dispose(disposing);
     }

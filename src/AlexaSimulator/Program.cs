@@ -3,33 +3,50 @@ using ModelContextProtocol.Client;
 using ModelContextProtocol.Protocol;
 using System.Net;
 
+using var chat = AlexaClient.OptionalChat.FromEnvironment();
+
 const string Endpoint = "http://127.0.0.1:32178/mcp";
 
 try
 {
     using var connectTimeout = new CancellationTokenSource(TimeSpan.FromSeconds(20));
-    await using var connection = await AlexaClient.BridgeConnection.ConnectAsync(connectTimeout.Token);
-    var client = connection.Client;
+    await using var connection = args.Contains("--chat-only", StringComparer.Ordinal) ? null : await AlexaClient.BridgeConnection.ConnectAsync(connectTimeout.Token);
+    var client = connection?.Client;
 
     if (args.Contains("--smoke", StringComparer.OrdinalIgnoreCase))
     {
-        return await RunSmokeAsync(client);
+        return await RunSmokeAsync(client ?? throw new IOException("Smoke requires the bridge."));
     }
 
     Console.WriteLine("keyboard.wtf x Alexa | local MCP console");
-    Console.WriteLine("Connected over Streamable HTTP. No API key is required.");
+    Console.WriteLine(client is null ? "Chat-only console. Use ai status, ask <question>, ai reset, quit." : "Connected over Streamable HTTP. Manual MCP commands need no AI key.");
+    Console.WriteLine(chat.Status);
     Console.WriteLine("This is a local simulator, not an official Alexa+ connection.");
-    Console.WriteLine("Commands: tools, status, save, load, notepad, workspace policy, save workspace, load workspace, restore workspace, quit");
+    Console.WriteLine("Commands: tools, status, save, load, notepad, workspace policy, save workspace, load workspace, restore workspace, ask <question>, ai status, ai reset, quit");
     while (true)
     {
         Console.Write("> ");
-        var command = Console.ReadLine()?.Trim().ToLowerInvariant();
+        var entered = Console.ReadLine()?.Trim();
+        var command = entered?.ToLowerInvariant();
         if (command is null or "quit" or "exit") return 0;
         if (string.IsNullOrEmpty(command)) continue;
         try
         {
             // User typing does not consume the network request deadline.
             using var callTimeout = new CancellationTokenSource();
+            var parsed = AlexaClient.ManualCommands.Parse(entered!);
+            if (parsed == AlexaClient.ManualCommand.AiStatus) { Console.WriteLine(chat.Status); continue; }
+            if (parsed == AlexaClient.ManualCommand.AiReset) { await chat.ResetAsync(callTimeout.Token); Console.WriteLine("AI ask/reply history cleared."); continue; }
+            if (parsed == AlexaClient.ManualCommand.Ask)
+            {
+                callTimeout.CancelAfter(TimeSpan.FromSeconds(40));
+                var reply = await chat.AskAsync(AlexaClient.ManualCommands.AskPrompt(entered!), callTimeout.Token);
+                Console.WriteLine(reply.Refused ? "[AI refusal]" : reply.Incomplete ? "[AI partial answer]" : "[AI text answer]");
+                Console.WriteLine(reply.Text);
+                Console.WriteLine("No desktop action was executed by this answer.");
+                continue;
+            }
+            if (client is null) { Console.WriteLine("This chat-only session has no desktop bridge connection. Use ask, ai status, ai reset or quit."); continue; }
             switch (command)
             {
                 case "tools":
@@ -96,10 +113,11 @@ try
                     Print(await client.CallToolAsync("open_notepad", cancellationToken: callTimeout.Token));
                     break;
                 default:
-                    Console.WriteLine("Unknown command. Use: tools, status, save, load, notepad, workspace policy, save workspace, load workspace, restore workspace, quit");
+                    Console.WriteLine("Unknown command. Use: tools, status, save, load, notepad, workspace policy, save workspace, load workspace, restore workspace, ask <question>, ai status, ai reset, quit");
                     break;
             }
         }
+        catch (AlexaClient.ChatUnavailableException ex) { Console.Error.WriteLine(ex.Message); }
         catch (Exception ex) when (ex is McpException or HttpRequestException or OperationCanceledException)
         {
             Console.Error.WriteLine("MCP request failed: " + ex.Message);

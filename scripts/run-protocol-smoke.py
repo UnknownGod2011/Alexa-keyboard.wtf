@@ -50,9 +50,15 @@ def main() -> int:
         projects = pathlib.Path(data) / "projects"
         (projects / "Example").mkdir(parents=True)
         env = dict(os.environ, ALEXA_BRIDGE_DATA_DIR=str(pathlib.Path(data) / "handoffs"), ALEXA_BRIDGE_RUNTIME_DIR=str(runtime), ALEXA_WORKSPACE_ROOT=str(projects))
+        env["ALEXA_AI_ENABLED"] = "0"  # Never send cloud prompts during hosted UI checks.
         # Benign conflicting host settings must never add or replace desktop bindings.
         env["ASPNETCORE_URLS"] = "http://127.0.0.1:0"
         env["Kestrel__Endpoints__Inherited__Url"] = "http://127.0.0.1:0"
+        chat_only = subprocess.run(["dotnet", str(client_dll), "--chat-only"], cwd=work, env=env,
+                                   input="ai status\nask no network fixture\nai reset\nquit\n", capture_output=True, text=True, timeout=15)
+        if chat_only.returncode != 0 or "AI is disabled" not in chat_only.stdout or "history cleared" not in chat_only.stdout:
+            raise RuntimeError("No-key chat-only console failed without a running bridge: " + chat_only.stderr)
+        print("PASS: chat-only console works without bridge credentials and explicitly denies unconfigured AI.")
         server = subprocess.Popen(
             ["dotnet", str(server_dll), "--deny-actions"],
             cwd=work,

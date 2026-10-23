@@ -103,6 +103,7 @@ try
 
     await ConsoleApprovalChecks.RunAsync(Check);
     await WorkspaceChecks.RunAsync(root, Check);
+    await ChatChecks.RunAsync(Check);
     Console.WriteLine($"PASS: {checks} permission, cancellation, tool-result and persistence checks.");
     Console.WriteLine("NOTE: adapter tests use a recording launcher; no Windows UI action was attempted.");
     return 0;
