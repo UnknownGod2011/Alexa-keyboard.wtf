@@ -78,6 +78,10 @@ try
                         ["name"] = loadName
                     }, cancellationToken: callTimeout.Token));
                     break;
+                case "restore my development workspace":
+                    callTimeout.CancelAfter(TimeSpan.FromSeconds(40));
+                    Print(await client.CallToolAsync("restore_workspace", new Dictionary<string, object?> { ["name"] = "Development" }, cancellationToken: callTimeout.Token));
+                    break;
                 case "workspace policy":
                     callTimeout.CancelAfter(TimeSpan.FromSeconds(40));
                     Print(await client.CallToolAsync("get_workspace_policy", cancellationToken: callTimeout.Token));

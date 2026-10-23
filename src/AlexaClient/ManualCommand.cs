@@ -1,6 +1,6 @@
 namespace AlexaClient;
 
-public enum ManualCommand { Help, Discover, Status, Save, Load, Notepad, WorkspacePolicy, SaveWorkspace, LoadWorkspace, RestoreWorkspace, Ask, AiStatus, AiReset }
+public enum ManualCommand { Help, Discover, Status, Save, Load, Notepad, WorkspacePolicy, SaveWorkspace, LoadWorkspace, RestoreWorkspace, RestoreDevelopmentWorkspace, Ask, AiStatus, AiReset }
 
 public static class ManualCommands
 {
@@ -23,6 +23,7 @@ public static class ManualCommands
         "save workspace" => ManualCommand.SaveWorkspace,
         "load workspace" => ManualCommand.LoadWorkspace,
         "restore workspace" => ManualCommand.RestoreWorkspace,
+        "restore my development workspace" => ManualCommand.RestoreDevelopmentWorkspace,
         "ai status" => ManualCommand.AiStatus,
         "ai reset" => ManualCommand.AiReset,
         _ => ManualCommand.Help

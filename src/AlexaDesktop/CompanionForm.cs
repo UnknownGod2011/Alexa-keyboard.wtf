@@ -148,7 +148,7 @@ public sealed class CompanionForm : Form
     {
         if (_operation is not null || _closing || string.IsNullOrWhiteSpace(text)) return;
         var command = ManualCommands.Parse(text);
-        var name = _name.Text;
+        var name = command == ManualCommand.RestoreDevelopmentWorkspace ? "Development" : _name.Text;
         var summary = _summary.Text;
         Dictionary<string, object?>? workspaceArguments = null;
         if (command == ManualCommand.SaveWorkspace)
@@ -187,18 +187,18 @@ public sealed class CompanionForm : Form
                 ManualCommand.WorkspacePolicy => "get_workspace_policy",
                 ManualCommand.SaveWorkspace => "save_workspace",
                 ManualCommand.LoadWorkspace => "load_workspace",
-                ManualCommand.RestoreWorkspace => "restore_workspace",
+                ManualCommand.RestoreWorkspace or ManualCommand.RestoreDevelopmentWorkspace => "restore_workspace",
                 ManualCommand.Notepad => "open_notepad",
                 _ => throw new InvalidOperationException("Unsupported manual command.")
             };
             Dictionary<string, object?>? arguments = command switch
             {
                 ManualCommand.Save => new() { ["name"] = name, ["summary"] = summary },
-                ManualCommand.Load or ManualCommand.LoadWorkspace or ManualCommand.RestoreWorkspace => new() { ["name"] = name },
+                ManualCommand.Load or ManualCommand.LoadWorkspace or ManualCommand.RestoreWorkspace or ManualCommand.RestoreDevelopmentWorkspace => new() { ["name"] = name },
                 ManualCommand.SaveWorkspace => workspaceArguments,
                 _ => null
             };
-            if (command is ManualCommand.Notepad or ManualCommand.RestoreWorkspace)
+            if (command is ManualCommand.Notepad or ManualCommand.RestoreWorkspace or ManualCommand.RestoreDevelopmentWorkspace)
                 AddCard("Approval", "If desktop launches are enabled, approve or deny this individual request in the server console. Cancel request stops waiting; a completed Windows launch cannot be undone.", Muted);
             _status.Text = "Executing · " + tool;
             var result = await _bridge.CallAsync(tool, arguments, ct);
