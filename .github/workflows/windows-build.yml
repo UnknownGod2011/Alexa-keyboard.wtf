@@ -32,6 +32,11 @@ jobs:
         run: python scripts/run-protocol-smoke.py --ui
       - name: Permission, cancellation and persistence regression checks
         run: dotnet run --project tests/AlexaBridge.Checks/AlexaBridge.Checks.csproj --configuration Release
+      - name: Actual Windows Notepad window and native speech probe
+        timeout-minutes: 3
+        env:
+          ALEXA_RUN_NATIVE_DESKTOP_CHECKS: '1'
+        run: dotnet run --project tests/AlexaDesktop.NativeChecks/AlexaDesktop.NativeChecks.csproj --configuration Release
       - name: Prepare framework-dependent Windows preview
         run: ./scripts/package-windows.ps1
       - name: Parse PowerShell entrypoints
@@ -55,6 +60,8 @@ jobs:
         if: always()
         with:
           name: windows-ui-control-render
-          path: artifacts/ui/**/*.png
+          path: |
+            artifacts/ui/**/*.png
+            artifacts/native/**/*.png
           if-no-files-found: warn
 

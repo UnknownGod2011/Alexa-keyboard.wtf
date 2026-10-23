@@ -13,6 +13,7 @@ A standalone Windows companion that exposes a small set of desktop capabilities 
 - Windows graphical simulator: conversation/action history, connection state, discovered tools, handoff fields, reconnect, request cancellation, and real execution results.
 - Windows Notepad launch: disabled by default, requires operator opt-in and a fresh approval in the server console for each request.
 - Optional, explicitly configured AI text conversation through the OpenAI Responses API. AI answers cannot execute desktop tools.
+- Optional Windows dictation and read-aloud buttons. Dictation fills the input for review and never sends or executes automatically.
 - Validation and storage failures return MCP tool errors; no simulated success responses.
 
 ![Windows companion control render](docs/images/companion-windows.png)
@@ -197,7 +198,15 @@ AI text is displayed with its source and partial/refusal state. It is never pars
 
 The implementation follows [official OpenAI text-generation documentation](https://developers.openai.com/api/docs/guides/text). Automated tests use a fake HTTP adapter to verify requests, response parsing, redacted errors, cancellation and bounded history; they do not establish a successful paid API request with your account. Credential-backed provider behavior still needs real verification.
 
-Voice input/output and production Alexa+ registration, authentication, networking and end-to-end connectivity remain unfinished. The local simulator does not claim Amazon cloud access.
+### Optional Windows voice
+
+Choose **Dictate** to capture one phrase through an installed Windows speech recognizer. The status shows when the microphone is active, and listening ends after a result, cancellation or a 15-second deadline. The transcript fills the input box for review; edit it and press **Send** yourself. A transcript never executes a command or starts a cloud request automatically. Missing speech language packs, microphone access or devices produce an error while typed commands remain usable.
+
+Choose **Read last** to read up to 500 characters from the latest displayed response using an installed Windows voice and the default output device. Speech does not start automatically. **Cancel request** stops listening/reading. The application sends no audio to its AI provider; an explicit `ask` after transcript review sends text under the AI rules above. Windows speech engines and voices follow their installed system configuration.
+
+Hosted GUI tests use a recording voice adapter to verify button routing, transcript review, cancellation and manual-mode recovery. Actual microphone recognition, audible output and hardware cleanup remain unverified until the interactive Windows procedure is run. The adapter uses Microsoft's [System.Speech](https://www.nuget.org/packages/System.Speech/10.0.13).
+
+Production Alexa+ registration, authentication, networking and end-to-end connectivity remain unfinished. The local simulator does not claim Amazon cloud access.
 
 ## Troubleshooting
 

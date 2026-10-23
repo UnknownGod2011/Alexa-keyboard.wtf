@@ -49,7 +49,7 @@ internal sealed class WindowsVoice : IVoiceService
                 if (!completion.Task.IsCompleted) engine.RecognizeAsyncCancel();
             }
         }
-        catch (Exception ex) when (ex is InvalidOperationException or System.Runtime.InteropServices.COMException or PlatformNotSupportedException or UnauthorizedAccessException or ArgumentException)
+        catch (Exception ex) when (ex is InvalidOperationException or System.Runtime.InteropServices.COMException or NotSupportedException or UnauthorizedAccessException or ArgumentException or System.ComponentModel.Win32Exception or IOException)
         { throw new VoiceUnavailableException("Windows dictation is unavailable. Check your microphone permissions, input device and installed speech language. Typed commands remain available."); }
     }, ct);
 
@@ -77,7 +77,7 @@ internal sealed class WindowsVoice : IVoiceService
                 if (!completion.Task.IsCompleted) speech.SpeakAsyncCancelAll();
             }
         }
-        catch (Exception ex) when (ex is InvalidOperationException or System.Runtime.InteropServices.COMException or PlatformNotSupportedException or UnauthorizedAccessException or ArgumentException)
+        catch (Exception ex) when (ex is InvalidOperationException or System.Runtime.InteropServices.COMException or NotSupportedException or UnauthorizedAccessException or ArgumentException or System.ComponentModel.Win32Exception or IOException)
         { throw new VoiceUnavailableException("Windows read-aloud is unavailable. Check installed voices and your audio output device."); }
     }, ct);
 }
