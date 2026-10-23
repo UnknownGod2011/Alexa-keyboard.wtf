@@ -17,6 +17,8 @@ public sealed class WorkspaceRoot(string? configuredRoot)
         if (!Path.IsPathFullyQualified(configuredRoot) || configuredRoot.StartsWith(@"\\", StringComparison.Ordinal) || configuredRoot.StartsWith("//", StringComparison.Ordinal))
             throw new InvalidOperationException("Workspace root must be an absolute local directory, not a network path.");
         var root = Path.TrimEndingDirectorySeparator(Path.GetFullPath(configuredRoot));
+        if (OperatingSystem.IsWindows() && new DriveInfo(Path.GetPathRoot(root)!).DriveType == DriveType.Network)
+            throw new InvalidOperationException("Workspace root must not use a mapped network drive.");
         ValidateDirectoryChain(root);
         if (relativeFolder == ".") return root;
         if (string.IsNullOrWhiteSpace(relativeFolder)) throw new ArgumentException("Choose a relative workspace folder, or '.' for the approved root.");

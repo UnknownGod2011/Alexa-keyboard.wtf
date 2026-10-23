@@ -10,7 +10,21 @@ internal sealed class WorkspaceDialog : Form
     internal bool OpenNotepad => _openNotepad.Checked;
 
     internal void FillForCheck(string folder, bool openFolder, bool openNotepad)
-    { _folder.Text = folder; _openFolder.Checked = openFolder; _openNotepad.Checked = openNotepad; }
+    {
+        _folder.Text = folder; _openFolder.Checked = openFolder; _openNotepad.Checked = openNotepad;
+        foreach (var control in new Control[] { _folder, _openFolder, _openNotepad, (Control)AcceptButton!, (Control)CancelButton! })
+            if (!ClientRectangle.Contains(RectangleToClient(control.RectangleToScreen(control.ClientRectangle))))
+                throw new InvalidOperationException("Workspace dialog control is clipped.");
+        var directory = Environment.GetEnvironmentVariable("ALEXA_UI_CAPTURE_DIR");
+        if (!string.IsNullOrWhiteSpace(directory))
+        {
+            Directory.CreateDirectory(directory);
+            Refresh();
+            using var bitmap = new Bitmap(Width, Height);
+            DrawToBitmap(bitmap, new Rectangle(0, 0, Width, Height));
+            bitmap.Save(Path.Combine(directory, "workspace-dialog-render.png"), System.Drawing.Imaging.ImageFormat.Png);
+        }
+    }
 
     public WorkspaceDialog(string name)
     {

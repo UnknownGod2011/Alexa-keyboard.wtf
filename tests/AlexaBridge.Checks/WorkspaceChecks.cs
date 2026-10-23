@@ -18,6 +18,10 @@ internal static class WorkspaceChecks
         WorkspaceTools Tools(bool enabled = true) => new(store, root, approval, folder, notepad, new(enabled));
         check(new WorkspaceTools(store, new WorkspaceRoot(null), approval, folder, notepad, new(true)).GetWorkspacePolicy().IsError == true,
             "workspace root is explicit host configuration");
+        check(new WorkspaceTools(store, new WorkspaceRoot(@"\\server\share"), approval, folder, notepad, new(true)).GetWorkspacePolicy().IsError == true,
+            "workspace root rejects UNC network paths");
+        check(new WorkspaceTools(store, new WorkspaceRoot("relative"), approval, folder, notepad, new(true)).GetWorkspacePolicy().IsError == true,
+            "workspace root rejects relative configuration");
         foreach (var path in new[] { "../Example", "Example/..", "/Example", "C:\\Example", "Example//child", "Example.", "Example ", ".hidden/../Example" })
             check(Tools().SaveWorkspace("Invalid", path, "summary", true, false, default).IsError == true,
                 "workspace rejects unsafe path: " + path);
@@ -26,6 +30,11 @@ internal static class WorkspaceChecks
         check(saved.IsError != true && folder.Calls == 0 && notepad.Calls == 0, "saving workspace has no desktop side effect");
         check(Tools().LoadWorkspace("Development").IsError != true, "workspace record round trip validates path");
         check((await Tools(false).RestoreWorkspace("Development", default)).IsError == true && approval.Calls == 0, "restore requires operator opt-in before asking approval");
+        folder.Supported = false;
+        var beforeUnsupportedApproval = approval.Calls;
+        check((await Tools().RestoreWorkspace("Development", default)).IsError == true && approval.Calls == beforeUnsupportedApproval,
+            "unsupported workspace action fails before approval");
+        folder.Supported = true;
         approval.Allow = false;
         check((await Tools().RestoreWorkspace("Development", default)).IsError == true && folder.Calls == 0 && notepad.Calls == 0,
             "denied restore launches no steps");
@@ -134,7 +143,7 @@ internal static class WorkspaceChecks
     }
     private sealed class Folder : IWorkspaceFolderLauncher
     {
-        public bool Supported => true;
+        public bool Supported { get; set; } = true;
         public bool Fail, NoHandle;
         public int Calls;
         public string? LastPath;
