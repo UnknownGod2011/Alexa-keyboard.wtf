@@ -1,15 +1,16 @@
 # Progress
 
-## Current checkpoint — 2026-10-23
+## Current checkpoint — 2026-10-24 (Asia/Calcutta)
 
 - Work is integrated into `codex/alexa-plus-completion` by PR #3, merge commit `15122e6c545b6de8c7e0ec514e16c6c6f6ec6992`.
 - Functional head `6d2f6089fa030d905210af287fc7ea0a24e5427a` passed Windows CI [39991652332](https://github.com/UnknownGod2011/Alexa-keyboard.wtf/actions/runs/39991652332): all builds, raw MCP 2025-11-25, SDK calls, source/published graphical controls, compact layout, **52** regressions, strict binding under conflicting host configuration, script parsing, extracted-package launcher, foreign-listener refusal, owner-aware shutdown and preview packaging.
 - Local preview works without an AI key. The genuine control renders were visually inspected. A prior preview archive was inspected: required launch/runtime/notice files were present, dependency metadata was non-empty, and no credential files were found.
 - `main` remains unchanged and PR #2 stays draft. Production keyboard.wtf was read only. This is not a final release or verified Alexa cloud integration.
 - A replacement task was created in this Work conversation every **305 minutes (5 hours 5 minutes)**; the previous normal-chat task is paused. The prompt requests at least 60 minutes of substantive engineering when execution budgets permit; wall-clock minimums are not a platform guarantee.
-- **Active implementation:** `codex/approved-workspace-restore` adds versioned workspace storage, a host-configured approved root, traversal/junction rejection, explicit folder/Notepad bundles, fresh host approval, partial/cancelled results, console/GUI controls and regression/protocol checks. Initial implementation `8fae7cad9cefe4bafe0ef632ec9d538750d6dc71` is awaiting Windows CI; do not claim it passed yet.
+- **Workspace restoration integrated:** PR #4 merged to development as `f0f6c5ab3a7abeab510dbc27a3bd25e37d05a4ad`. Functional `487f9a12aea23e839ad8134a87aeaf0e4bc2b7c4` passed [40014939575](https://github.com/UnknownGod2011/Alexa-keyboard.wtf/actions/runs/40014939575): **86** regressions, source/published raw+SDK MCP, GUI save dialog/load/denied restore, compact bounds and launcher/package validation. Actual dialog and compact renders were inspected. Root and folder/Notepad action scope are documented.
+- **Active implementation:** `codex/optional-ai-chat`, based on the verified workspace head, adds explicit opt-in Responses conversation. Only ask prompts/history are sent; AI has no desktop-tool capability. Initial `e0bb864336265196b5001ab08bdd0871352109a9` awaits CI. No credential-backed cloud request has been made.
 - **External verification still needed:** real end-user Windows Notepad visibility/consent UX and Windows 10/11 desktop behavior. Hosted graphical control tests do not prove these.
-- Optional AI/voice and actual remote Alexa+ pairing/connectivity are unfinished. See RELEASE_READINESS.md.
+- AI transport tests and credential-backed verification, voice and actual remote Alexa+ pairing/connectivity remain unfinished. See RELEASE_READINESS.md.
 
 ## Engineering history
 

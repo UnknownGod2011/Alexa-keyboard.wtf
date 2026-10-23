@@ -21,3 +21,7 @@ Tool path: manual input -> explicit command routing -> authenticated MCP call ->
 Read-only review of the original keyboard.wtf JarvisPermissionPolicy, AppResolverService and IAiProvider informed the narrow permission and launch design. Its general discovery, shell-based enumeration, browser automation and voice stack are not imported. This avoids depending on private production configuration or altering production behavior.
 
 Real remote Alexa+ pairing and cloud connectivity remain outside the verified local implementation.
+
+## Optional AI text boundary
+
+AlexaClient also contains an explicitly configured Responses client. Only `ask` input enters it; unknown text never implicitly sends a cloud request. It sends explicit ask/reply history with a bounded context, `store=false`, no tools, a deadline, no redirects and no automatic retries. It holds credentials only in client memory from the process environment. Provider errors discard raw bodies. It does not receive BridgeConnection, MCP credentials, saved fields or tool results, and its output is displayed without command routing. `ai reset` clears its in-memory history. Hosted tests use an in-memory HTTP adapter and explicitly disable real AI for GUI smoke.

@@ -23,3 +23,6 @@ Use a supported Windows 10/11 desktop, .NET 8 SDK and a fresh clone of the branc
 18. Inspect workspace dialog and additional shortcuts at 100% and 150% scaling. Cancel its dialog and confirm no save request is made.
 
 A failure blocks readiness. This document is a procedure, not a claim that these tests have been executed.
+
+
+Optional configured-AI verification (not executed by CI): set `ALEXA_AI_ENABLED=1`, a valid `OPENAI_API_KEY` and an account-accessible `ALEXA_AI_MODEL` in the client environment. Run `ai status`, an explicit `ask`, a follow-up and `ai reset`. Record the actual provider response and request failure/cancellation behavior without logging keys. Confirm manual status/handoff commands remain usable after an AI error, and that AI text suggesting a launch never executes an MCP call. Test console `--chat-only` without the bridge. API requests use the configured account. Missing/partial configuration must show an actionable error without a network request.

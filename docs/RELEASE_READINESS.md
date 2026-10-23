@@ -15,10 +15,12 @@ This is a development preview, not a verified release.
 | Visible simulator behavior | Interactive end-user desktop still unverified |
 | Actual Notepad window | Unverified; interactive Windows required |
 | Fresh extracted preview package | Passed CI 39989264504, including path with spaces, actual MCP call and cleanup |
-| Optional AI / voice | Not implemented |
+| Optional AI text | Explicit opt-in Responses implementation under validation; credential-backed request unverified |
+| Voice | Not implemented |
 | Production Alexa+ connectivity | Not implemented or verified |
 | Fixed endpoint under inherited configuration | Passed CI 39991652332 |
-| Regression checks | 52 passed in Windows CI |
+| Approved saved project workspaces | Passed CI 40014939575; actual Explorer/Notepad windows still unverified |
+| Regression checks | 86 passed in Windows CI 40014939575 |
 | Ready for main / public release | No; remaining gates must be completed |
 
 Do not infer visible Windows correctness from hosted CI. See WINDOWS_MANUAL_TEST.md.
@@ -26,8 +28,8 @@ Do not infer visible Windows correctness from hosted CI. See WINDOWS_MANUAL_TEST
 ## Remaining work by priority
 
 1. Verify real end-user Windows desktop behavior, including Notepad visibility, consent UX, cancellation, restart and shutdown. Hosted control renders are not a substitute.
-2. Implement meaningful saved development-workspace restoration through approved directories and allowlisted actions. Loading a task summary is not full workspace restoration.
-3. Add optional externally configured conversational AI/voice only after the deterministic no-key path remains stable.
+2. Verify real workspace folder/Notepad visibility and consent UX. Versioned approved-folder restoration is implemented; it does not restore editor tabs or arbitrary application state.
+3. Complete optional-AI transport validation and credential-backed verification. Add optional voice while preserving no-key manual operation.
 4. Design and verify actual remote Alexa+ registration, authentication and pairing if external access becomes available. Localhost is not cloud connectivity.
 
 The current deliverable can be integrated into the development branch as a tested local preview. These remaining gates prevent claiming a final release or merging as a finished product into main.

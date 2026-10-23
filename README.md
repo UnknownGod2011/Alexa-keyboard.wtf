@@ -12,6 +12,7 @@ A standalone Windows companion that exposes a small set of desktop capabilities 
 - Versioned workspaces: save a project folder under a host-approved root, a summary and explicit folder/Notepad actions; restore through one fresh approval for the complete bundle.
 - Windows graphical simulator: conversation/action history, connection state, discovered tools, handoff fields, reconnect, request cancellation, and real execution results.
 - Windows Notepad launch: disabled by default, requires operator opt-in and a fresh approval in the server console for each request.
+- Optional, explicitly configured AI text conversation through the OpenAI Responses API. AI answers cannot execute desktop tools.
 - Validation and storage failures return MCP tool errors; no simulated success responses.
 
 ![Windows companion control render](docs/images/companion-windows.png)
@@ -128,8 +129,10 @@ Relative traversal, network roots, symbolic links and junctions (including ances
 | `save workspace` | Save folder, summary and explicit actions; GUI opens a form |
 | `load workspace` | Read and validate the named workspace |
 | `restore workspace` | Request approval for the named workspace bundle |
+| `ask <question>` | Send an explicit prompt to configured optional AI |
+| `ai status` / `ai reset` | Inspect safe AI status / clear in-memory ask history |
 
-The graphical simulator accepts this explicit vocabulary. Other text shows help and does not execute a desktop action. It does not pretend to be a cloud conversational model.
+The graphical simulator accepts this explicit vocabulary. Other text shows help and does not execute a desktop action. Cloud conversation requires the separate explicit `ask` command and configuration below.
 
 ## MCP clients
 
@@ -180,7 +183,21 @@ Windows CI exercises graphical controls over MCP and captures actual control ren
 
 ## AI and Alexa+ connectivity
 
-No external API keys are required for the implemented tools. Optional conversational AI and voice are not implemented yet. Production Alexa+ registration, authentication, networking, and end-to-end connectivity are also not implemented or verified. The local simulator demonstrates the MCP execution path without claiming Amazon cloud access.
+Manual MCP commands require no external key. To opt in to AI text conversation, configure these variables in the client process environment before launching it:
+
+| Variable | Value |
+| --- | --- |
+| `ALEXA_AI_ENABLED` | `1` to explicitly enable AI; otherwise disabled |
+| `OPENAI_API_KEY` | Your own OpenAI API key; keep it outside source files and summaries |
+| `ALEXA_AI_MODEL` | A Responses-compatible model available to your API account; no model is selected automatically |
+
+Type `ai status`, then `ask <question>`. Only explicit ask prompts and recent ask/reply history go to `https://api.openai.com/v1/responses`; provider usage applies to your API account. The client sends no desktop state, saved handoffs, workspace paths, MCP token or tool results automatically. It requests `store=false`, limits response/context size, has a deadline and does not automatically retry failures. `ai reset` clears the in-memory conversation. There is no conversation file or API-key file. The console supports `--chat-only` to ask without connecting to the local bridge.
+
+AI text is displayed with its source and partial/refusal state. It is never parsed as a desktop command, and the AI connection has no MCP tools. Use manual commands for desktop actions, which retain their host opt-in and approval requirements. A failed or unconfigured provider reports an error while manual mode remains usable.
+
+The implementation follows [official OpenAI text-generation documentation](https://developers.openai.com/api/docs/guides/text). Automated tests use a fake HTTP adapter to verify requests, response parsing, redacted errors, cancellation and bounded history; they do not establish a successful paid API request with your account. Credential-backed provider behavior still needs real verification.
+
+Voice input/output and production Alexa+ registration, authentication, networking and end-to-end connectivity remain unfinished. The local simulator does not claim Amazon cloud access.
 
 ## Troubleshooting
 

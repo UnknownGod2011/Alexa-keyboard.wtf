@@ -142,3 +142,13 @@ python scripts/test-windows-launcher.py --package-root artifacts/windows-preview
 ```
 
 No actual end-user Notepad visibility, Windows 10/11 interactive desktop or production Alexa+ connectivity is claimed. All launch-adapter regression tests use a recording adapter and all protocol hosts deny desktop launches.
+
+
+## Approved workspace restoration
+
+- Functional head `487f9a12aea23e839ad8134a87aeaf0e4bc2b7c4`; Windows [40014939575](https://github.com/UnknownGod2011/Alexa-keyboard.wtf/actions/runs/40014939575), **success**.
+- **86** regression checks, including changed roots, traversal/junction rejection, immutable consent snapshot, removal during approval, partial/unverified/cancelled steps, bounded/versioned/atomic workspace records and existing permission/authentication tests.
+- Eight real MCP tools discovered by independent raw and SDK clients. Workspace save/load succeeded; headless restore was denied.
+- Actual GUI save-dialog handler, load, denied restore and policy query passed for source and published DLLs. Dialog and compact-window bounds passed. Actual renders were inspected.
+- Package build, PowerShell parsing, extracted launcher from a path with spaces, foreign-listener refusal and owned shutdown passed.
+- PR #4 merged into development at `f0f6c5ab3a7abeab510dbc27a3bd25e37d05a4ad`. End-user Explorer/Notepad visibility remains unverified.

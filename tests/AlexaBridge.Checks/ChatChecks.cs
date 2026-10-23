@@ -64,6 +64,9 @@ internal static class ChatChecks
         check((await chat.AskAsync("redact", default)).Text == "[redacted]", "AI response cannot echo configured credential into UI");
         handler.Body = new string('x', 65537);
         await ExpectUnavailable(() => chat.AskAsync("oversized", default), _ => check(true, "AI response body size is bounded"));
+        handler.UnknownLength = true;
+        await ExpectUnavailable(() => chat.AskAsync("oversized without length", default), _ => check(true, "AI streaming read stays bounded without Content-Length"));
+        handler.UnknownLength = false;
         var priorCalls = handler.Bodies.Count;
         await ExpectUnavailable(() => chat.AskAsync(new string('x', 4001), default), _ => check(handler.Bodies.Count == priorCalls, "oversized AI prompt is rejected before network"));
         using (var cancel = new CancellationTokenSource())
@@ -78,6 +81,20 @@ internal static class ChatChecks
             await ExpectUnavailable(() => incomplete.AskAsync("question", default), _ => check(incomplete.Status.Contains("not configured", StringComparison.Ordinal), "partial AI configuration does not fabricate a response"));
         handler.Body = success;
         await chat.ResetAsync(default);
+        handler.Block = true;
+        using (var cancel = new CancellationTokenSource())
+        {
+            var pending = chat.AskAsync("cancel while sending", cancel.Token);
+            await handler.Entered.Task.WaitAsync(TimeSpan.FromSeconds(5));
+            cancel.Cancel();
+            try { await pending; throw new Exception("In-flight cancellation ignored."); }
+            catch (OperationCanceledException) { check(true, "in-flight AI request observes cancellation"); }
+        }
+        handler.Block = false;
+        await chat.AskAsync("after cancellation", default);
+        using (var wire = JsonDocument.Parse(handler.Bodies.Last()))
+            check(wire.RootElement.GetProperty("input").GetArrayLength() == 1, "cancelled in-flight AI call does not enter history");
+        await chat.ResetAsync(default);
         for (var i = 0; i < 10; i++) await chat.AskAsync(new string('q', 3000), default);
         using (var wire = JsonDocument.Parse(handler.Bodies.Last()))
             check(wire.RootElement.GetProperty("input").EnumerateArray().Sum(m => m.GetProperty("content").GetString()!.Length) <= 12000,
@@ -91,17 +108,22 @@ internal static class ChatChecks
         throw new InvalidOperationException("Expected explicit AI failure.");
     }
 
+    private sealed class UnseekableMemory(byte[] bytes) : MemoryStream(bytes) { public override bool CanSeek => false; }
+
     private sealed class RecordingHttp(string body) : HttpMessageHandler
     {
         public string Body = body;
         public HttpStatusCode Status = HttpStatusCode.OK;
+        public bool UnknownLength, Block;
+        public readonly TaskCompletionSource Entered = new(TaskCreationOptions.RunContinuationsAsynchronously);
         public readonly List<string> Bodies = [];
         public string? LastAuthorization, LastUri;
         protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
             LastAuthorization = request.Headers.Authorization?.ToString(); LastUri = request.RequestUri?.ToString();
             Bodies.Add(await request.Content!.ReadAsStringAsync(cancellationToken));
-            return new(Status) { Content = new StringContent(Body, Encoding.UTF8, "application/json") };
+            if (Block) { Entered.TrySetResult(); await Task.Delay(Timeout.Infinite, cancellationToken); }
+            return new(Status) { Content = UnknownLength ? new StreamContent(new UnseekableMemory(Encoding.UTF8.GetBytes(Body))) : new StringContent(Body, Encoding.UTF8, "application/json") };
         }
     }
 }
