@@ -6,6 +6,7 @@ internal static class WorkspaceChecks
 {
     public static async Task RunAsync(string temporaryRoot, Action<bool, string> check)
     {
+        check(AlexaClient.ManualCommands.Parse("Restore my development workspace") == AlexaClient.ManualCommand.RestoreDevelopmentWorkspace, "flagship phrase selects the explicit Development workspace command");
         var projects = Path.Combine(temporaryRoot, "projects");
         var project = Path.Combine(projects, "Example");
         Directory.CreateDirectory(project);

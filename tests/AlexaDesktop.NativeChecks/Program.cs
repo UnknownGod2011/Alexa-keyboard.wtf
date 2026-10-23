@@ -18,24 +18,27 @@ internal static class Program
         var occupied = existing.Length > 0;
         foreach (var process in existing) process.Dispose();
         if (occupied) { Console.Error.WriteLine("Refusing to interfere with an existing Notepad session."); return 2; }
-        var started = DateTime.Now;
         var owned = new Dictionary<int, DateTime>();
+        NativeMcpFixture? fixture = null;
+        ExplorerWindowProbe? explorer = null;
         try
         {
-            var reported = new NotepadLauncher().Launch();
-            Console.WriteLine($"Actual fixed-path Notepad adapter reported PID {reported?.ToString() ?? "none"}.");
+            fixture = new NativeMcpFixture();
+            try
+            {
+                fixture.StartAsync().GetAwaiter().GetResult();
+                explorer = new ExplorerWindowProbe(fixture.ApprovedDirectory);
+                fixture.RestoreThroughMcpAsync().GetAwaiter().GetResult();
+            }
+            finally
+            {
+                foreach (var item in fixture.OwnedProcesses) owned.TryAdd(item.Key, item.Value);
+            }
+            explorer.VerifyOpened();
             IntPtr window = IntPtr.Zero;
             Rectangle bounds = default;
             for (var i = 0; i < 60 && window == IntPtr.Zero; i++)
             {
-                foreach (var process in Process.GetProcessesByName("notepad"))
-                {
-                    using (process)
-                    {
-                        try { if (process.StartTime >= started.AddSeconds(-1)) owned.TryAdd(process.Id, process.StartTime); }
-                        catch (InvalidOperationException) { }
-                    }
-                }
                 EnumWindows((handle, _) => {
                     GetWindowThreadProcessId(handle, out var pid);
                     if (!owned.ContainsKey((int)pid) || !IsWindowVisible(handle) || !GetWindowRect(handle, out var rect)) return true;
@@ -74,7 +77,7 @@ internal static class Program
             }
             else Console.WriteLine("UNVERIFIED: no enabled Windows synthesis voice is installed on this runner.");
             Console.WriteLine($"Installed recognition engines: {SpeechRecognitionEngine.InstalledRecognizers().Count}. No microphone was opened.");
-            Console.WriteLine("NOTE: this invokes the real launch adapter directly. It is not end-to-end interactive MCP consent or end-user Windows 10/11 verification.");
+            Console.WriteLine("NOTE: this uses an isolated MCP host with production tools and simulated local-console input. It does not establish human consent UX or end-user Windows 10/11 verification.");
             return 0;
         }
         catch (Exception ex)
@@ -97,6 +100,8 @@ internal static class Program
                 catch (Exception ex) when (ex is ArgumentException or InvalidOperationException or System.ComponentModel.Win32Exception)
                 { Console.Error.WriteLine("Native test cleanup: " + ex.GetType().Name); }
             }
+            explorer?.Dispose();
+            if (fixture is not null) fixture.DisposeAsync().AsTask().GetAwaiter().GetResult();
         }
     }
 

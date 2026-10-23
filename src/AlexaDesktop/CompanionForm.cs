@@ -148,7 +148,7 @@ public sealed class CompanionForm : Form
     {
         if (_operation is not null || _closing || string.IsNullOrWhiteSpace(text)) return;
         var command = ManualCommands.Parse(text);
-        var name = _name.Text;
+        var name = command == ManualCommand.RestoreDevelopmentWorkspace ? "Development" : _name.Text;
         var summary = _summary.Text;
         Dictionary<string, object?>? workspaceArguments = null;
         if (command == ManualCommand.SaveWorkspace)
@@ -187,18 +187,18 @@ public sealed class CompanionForm : Form
                 ManualCommand.WorkspacePolicy => "get_workspace_policy",
                 ManualCommand.SaveWorkspace => "save_workspace",
                 ManualCommand.LoadWorkspace => "load_workspace",
-                ManualCommand.RestoreWorkspace => "restore_workspace",
+                ManualCommand.RestoreWorkspace or ManualCommand.RestoreDevelopmentWorkspace => "restore_workspace",
                 ManualCommand.Notepad => "open_notepad",
                 _ => throw new InvalidOperationException("Unsupported manual command.")
             };
             Dictionary<string, object?>? arguments = command switch
             {
                 ManualCommand.Save => new() { ["name"] = name, ["summary"] = summary },
-                ManualCommand.Load or ManualCommand.LoadWorkspace or ManualCommand.RestoreWorkspace => new() { ["name"] = name },
+                ManualCommand.Load or ManualCommand.LoadWorkspace or ManualCommand.RestoreWorkspace or ManualCommand.RestoreDevelopmentWorkspace => new() { ["name"] = name },
                 ManualCommand.SaveWorkspace => workspaceArguments,
                 _ => null
             };
-            if (command is ManualCommand.Notepad or ManualCommand.RestoreWorkspace)
+            if (command is ManualCommand.Notepad or ManualCommand.RestoreWorkspace or ManualCommand.RestoreDevelopmentWorkspace)
                 AddCard("Approval", "If desktop launches are enabled, approve or deny this individual request in the server console. Cancel request stops waiting; a completed Windows launch cannot be undone.", Muted);
             _status.Text = "Executing · " + tool;
             var result = await _bridge.CallAsync(tool, arguments, ct);
@@ -361,6 +361,12 @@ public sealed class CompanionForm : Form
         _shortcuts[5].PerformClick();
         await _currentTask;
         Ensure(LastCard().Title == "restore_workspace · denied or failed" && LastCard().Body.Contains("disabled", StringComparison.Ordinal), "restore button bypassed operator policy");
+        _name.Text = "UnrelatedMissing";
+        _input.Text = "Restore my development workspace";
+        _send.PerformClick();
+        await _currentTask;
+        Ensure(LastCard().Title == "restore_workspace · denied or failed" && LastCard().Body.Contains("disabled", StringComparison.Ordinal), "flagship phrase did not select the saved Development workspace independently of edited name");
+        _name.Text = "Development";
         _input.Text = "workspace policy";
         _send.PerformClick();
         await _currentTask;
@@ -377,20 +383,6 @@ public sealed class CompanionForm : Form
         _read.PerformClick();
         await _currentTask;
         Ensure(voice.Spoken == spoken[..Math.Min(500, spoken.Length)], "read-aloud button did not use the explicit output adapter");
-        voice.Fail = true;
-        _dictate.PerformClick();
-        await _currentTask;
-        Ensure(LastCard().Title == "Voice unavailable" && _bridge is not null && _send.Enabled, "microphone failure broke manual MCP mode");
-        voice.Fail = false;
-        voice.Block = true;
-        _input.Text = "preserve input";
-        _dictate.PerformClick();
-        await voice.Listening.Task.WaitAsync(TimeSpan.FromSeconds(5));
-        _cancel.PerformClick();
-        await _currentTask;
-        Ensure(_input.Text == "preserve input" && _dictate.Enabled && _send.Enabled, "cancelled dictation changed input or stranded controls");
-        voice.Block = false;
-
         var directory = Environment.GetEnvironmentVariable("ALEXA_UI_CAPTURE_DIR");
         if (!string.IsNullOrWhiteSpace(directory))
         {
@@ -413,6 +405,20 @@ public sealed class CompanionForm : Form
             compact.Save(Path.Combine(directory, "companion-control-render-compact.png"), System.Drawing.Imaging.ImageFormat.Png);
             Size = previousSize;
         }
+
+        voice.Fail = true;
+        _dictate.PerformClick();
+        await _currentTask;
+        Ensure(LastCard().Title == "Voice unavailable" && _bridge is not null && _send.Enabled, "microphone failure broke manual MCP mode");
+        voice.Fail = false;
+        voice.Block = true;
+        _input.Text = "preserve input";
+        _dictate.PerformClick();
+        await voice.Listening.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        _cancel.PerformClick();
+        await _currentTask;
+        Ensure(_input.Text == "preserve input" && _dictate.Enabled && _send.Enabled, "cancelled dictation changed input or stranded controls");
+        voice.Block = false;
 
         _name.Text = "../escape";
         _shortcuts[1].PerformClick();

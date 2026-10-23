@@ -160,3 +160,14 @@ No actual end-user Notepad visibility, Windows 10/11 interactive desktop or prod
 - **114** checks include request arguments/auth, no tool capability, explicit prompt routing, history/reset/bounds, redacted errors, failed/cancelled history isolation, partial/refusal parsing, malformed/empty/oversized responses with and without Content-Length, no retries and in-flight cancellation. These use an in-memory HTTP adapter, not a paid provider request.
 - Source/published real MCP and GUI tests passed with cloud AI explicitly disabled. Disabled-AI status/errors preserved the authenticated MCP session. Standalone chat-only console worked before bridge startup, with no bridge credentials. Package, script and launcher checks passed.
 - PR #5 merged to development at `60be1c33f583d937cde2291ce2827f8ae7b5c5f9`. Credential-backed provider behavior remains unverified.
+
+## Native workspace restoration through MCP
+
+- Functional `f394c08c539c66e66c868a34b23ff2412a552650`; Windows [40018157021](https://github.com/UnknownGod2011/Alexa-keyboard.wtf/actions/runs/40018157021), **success**.
+- **115** regression/HTTP checks and all source/published protocol, GUI, packaging, script and extracted-launcher checks passed.
+- An isolated authenticated MCP fixture uses production tool/approval/launch implementations with explicitly simulated local-console input. It saved Development through MCP, denied a restore, checked no Notepad appeared, then accepted a different fresh approval.
+- Real Windows Explorer displayed the exact approved directory; the exact launcher-observed Notepad process owned a visible 768x519 top-level window. Cleanup matches recorded PID/start time and the exact Explorer path/window, not arbitrary processes.
+- Installed native speech produced 129436-byte WAV audio without speaker playback. No microphone was opened.
+- The exact flagship phrase selects Development independently of an edited name in the GUI; both clients use the shared manual parser. Real standard/compact/dialog renders and the owned Notepad capture were visually inspected.
+- A downloaded preview was inspected: 89 files, required launch/runtime files, 19 dependency entries including System.Speech/10.0.13 MIT and no credential files. Source credential-pattern scan and Python syntax/diff checks passed.
+- This establishes actual native action evidence on the hosted runner. It does not establish human consent UX, end-user Windows 10/11 hardware, live AI account access or Alexa production connectivity.
