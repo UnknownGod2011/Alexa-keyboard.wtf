@@ -19,3 +19,7 @@
 ## First protocol CI attempt
 - Run 39976573545 compiled the server and simulator successfully, but the smoke test failed at tool discovery: GetDesktopStatus was absent. No tool execution was validated in that run.
 - Corrective change: pass typeof(DesktopTools).Assembly explicitly to WithToolsFromAssembly and log discovered names. Verify the next CI run before claiming resolution.
+
+## Second protocol CI attempt
+- Run 39976874865 compiled both projects and successfully initialized/discovered MCP tools.
+- Discovery revealed names are normalized to snake_case, so the earlier PascalCase assertions were incorrect. Updated the client and pinned explicit server names; next run will verify actual tool calls.

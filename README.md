@@ -8,9 +8,9 @@ Early Windows-oriented MCP integration prototype built independently from the or
 
 - .NET 8 minimal ASP.NET Core application exposing the **official C# MCP SDK** over Streamable HTTP at `http://127.0.0.1:32178/mcp`.
 - No API key required to start the server or call the current tools.
-- `GetDesktopStatus`: non-sensitive local process/platform status.
-- `OpenNotepad`: launches Notepad only on Windows, without arbitrary process arguments; process start does **not** prove the window is visible.
-- `SaveTaskHandoff` / `LoadTaskHandoff`: save and retrieve bounded user-supplied session notes from local application data.
+- `get_desktop_status`: non-sensitive local process/platform status.
+- `open_notepad`: launches Notepad only on Windows, without arbitrary process arguments; process start does **not** prove the window is visible.
+- `save_task_handoff` / `load_task_handoff`: save and retrieve bounded user-supplied session notes from local application data.
 - Loopback-only binding, simple Host and Origin validation, no public remote access.
 
 **Not implemented yet:** conversational simulator, AI provider integration, full keyboard.wtf adapter, packaged installer, independent MCP client integration tests, verified interactive Windows run, Amazon production connectivity. Do not represent these as working.

@@ -37,14 +37,14 @@ try
                     foreach (var tool in tools) Console.WriteLine("  " + tool.Name);
                     break;
                 case "status":
-                    Print(await client.CallToolAsync("GetDesktopStatus", cancellationToken: callTimeout.Token));
+                    Print(await client.CallToolAsync("get_desktop_status", cancellationToken: callTimeout.Token));
                     break;
                 case "save":
                     Console.Write("Session name: ");
                     var saveName = Console.ReadLine() ?? "";
                     Console.Write("Task summary (not sensitive data): ");
                     var summary = Console.ReadLine() ?? "";
-                    Print(await client.CallToolAsync("SaveTaskHandoff", new Dictionary<string, object?>
+                    Print(await client.CallToolAsync("save_task_handoff", new Dictionary<string, object?>
                     {
                         ["name"] = saveName, ["summary"] = summary
                     }, cancellationToken: callTimeout.Token));
@@ -52,7 +52,7 @@ try
                 case "load":
                     Console.Write("Session name: ");
                     var loadName = Console.ReadLine() ?? "";
-                    Print(await client.CallToolAsync("LoadTaskHandoff", new Dictionary<string, object?>
+                    Print(await client.CallToolAsync("load_task_handoff", new Dictionary<string, object?>
                     {
                         ["name"] = loadName
                     }, cancellationToken: callTimeout.Token));
@@ -60,7 +60,7 @@ try
                 case "notepad":
                     Console.Write("Launch Notepad on this PC? Type YES to confirm: ");
                     if (Console.ReadLine() == "YES")
-                        Print(await client.CallToolAsync("OpenNotepad", cancellationToken: callTimeout.Token));
+                        Print(await client.CallToolAsync("open_notepad", cancellationToken: callTimeout.Token));
                     else
                         Console.WriteLine("Cancelled; no action requested.");
                     break;
@@ -99,28 +99,28 @@ static async Task<int> RunSmokeAsync(McpClient client)
     var names = tools.Select(tool => tool.Name).ToHashSet(StringComparer.Ordinal);
     Console.WriteLine("Discovered MCP tools: " + string.Join(", ", names.OrderBy(name => name)));
 
-    foreach (var expected in new[] { "GetDesktopStatus", "OpenNotepad", "SaveTaskHandoff", "LoadTaskHandoff" })
+    foreach (var expected in new[] { "get_desktop_status", "open_notepad", "save_task_handoff", "load_task_handoff" })
         Ensure(names.Contains(expected), "Missing MCP tool: " + expected);
 
-    var status = await client.CallToolAsync("GetDesktopStatus", cancellationToken: ct);
+    var status = await client.CallToolAsync("get_desktop_status", cancellationToken: ct);
     Ensure(status.IsError != true && Text(status).Contains("platform", StringComparison.Ordinal),
         "Desktop status tool returned an unexpected response.");
 
     var name = "Smoke" + Guid.NewGuid().ToString("N");
     const string summary = "MCP client to server round-trip test";
-    var saved = await client.CallToolAsync("SaveTaskHandoff",
+    var saved = await client.CallToolAsync("save_task_handoff",
         new Dictionary<string, object?> { ["name"] = name, ["summary"] = summary },
         cancellationToken: ct);
     Ensure(saved.IsError != true && Text(saved).Contains("Saved task handoff", StringComparison.Ordinal),
         "SaveTaskHandoff did not report success.");
 
-    var loaded = await client.CallToolAsync("LoadTaskHandoff",
+    var loaded = await client.CallToolAsync("load_task_handoff",
         new Dictionary<string, object?> { ["name"] = name },
         cancellationToken: ct);
     Ensure(loaded.IsError != true && Text(loaded).Contains(summary, StringComparison.Ordinal),
         "Saved task handoff was not returned.");
 
-    var invalid = await client.CallToolAsync("SaveTaskHandoff",
+    var invalid = await client.CallToolAsync("save_task_handoff",
         new Dictionary<string, object?> { ["name"] = "../escape", ["summary"] = "reject" },
         cancellationToken: ct);
     Ensure(Text(invalid).Contains("Invalid input", StringComparison.Ordinal),

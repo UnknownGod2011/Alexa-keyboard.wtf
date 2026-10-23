@@ -7,3 +7,5 @@
 Pending: verified protocol CI result, authenticated local access, desktop GUI, deeper production adapter integration, Windows GUI verification, release candidate.
 
 2026-10-23: First protocol CI run compiled both projects but failed because tool discovery did not contain GetDesktopStatus. Updated server registration to explicitly scan the DesktopTools assembly; awaiting rerun to confirm root cause and fix.
+
+2026-10-23: Second protocol CI run revealed the MCP SDK advertises tool names in snake_case (get_desktop_status, open_notepad, save_task_handoff, load_task_handoff). Updated client invocations to match and pinned explicit tool names/annotations on the server. Awaiting CI verification.

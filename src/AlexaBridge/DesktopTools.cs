@@ -11,7 +11,7 @@ public static class DesktopTools
 {
     private static readonly object SessionLock = new();
 
-    [McpServerTool, Description("Return basic non-sensitive information about this MCP desktop companion.")]
+    [McpServerTool(Name = "get_desktop_status", ReadOnly = true, OpenWorld = false), Description("Return basic non-sensitive information about this MCP desktop companion.")]
     public static string GetDesktopStatus()
     {
         return JsonSerializer.Serialize(new {
@@ -23,7 +23,7 @@ public static class DesktopTools
         });
     }
 
-    [McpServerTool, Description("Open Windows Notepad on the local interactive Windows desktop. No command or path arguments are accepted.")]
+    [McpServerTool(Name = "open_notepad", OpenWorld = false), Description("Open Windows Notepad on the local interactive Windows desktop. No command or path arguments are accepted.")]
     public static string OpenNotepad()
     {
         if (!OperatingSystem.IsWindows())
