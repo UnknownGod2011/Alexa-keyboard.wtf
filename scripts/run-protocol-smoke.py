@@ -50,6 +50,7 @@ def main() -> int:
         projects = pathlib.Path(data) / "projects"
         (projects / "Example").mkdir(parents=True)
         env = dict(os.environ, ALEXA_BRIDGE_DATA_DIR=str(pathlib.Path(data) / "handoffs"), ALEXA_BRIDGE_RUNTIME_DIR=str(runtime), ALEXA_WORKSPACE_ROOT=str(projects))
+        env["ALEXA_AI_ENABLED"] = "0"  # Never send cloud prompts during hosted UI checks.
         # Benign conflicting host settings must never add or replace desktop bindings.
         env["ASPNETCORE_URLS"] = "http://127.0.0.1:0"
         env["Kestrel__Endpoints__Inherited__Url"] = "http://127.0.0.1:0"
