@@ -6,8 +6,9 @@ internal static class Program
     private static void Main(string[] args)
     {
         ApplicationConfiguration.Initialize();
-        using var form = new CompanionForm();
-        if (args.Contains("--ui-smoke", StringComparer.Ordinal))
+        var smoke = args.Contains("--ui-smoke", StringComparer.Ordinal);
+        using var form = smoke ? new CompanionForm(new RecordingVoice()) : new CompanionForm();
+        if (smoke)
         {
             form.Shown += async (_, _) =>
             {

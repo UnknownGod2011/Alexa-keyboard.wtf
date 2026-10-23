@@ -20,6 +20,10 @@ public sealed class CompanionForm : Form
     private readonly Button _send = new() { Text = "Send", AutoSize = true };
     private readonly Button _cancel = new() { Text = "Cancel request", AutoSize = true, Enabled = false };
     private readonly List<Button> _shortcuts = [];
+    private readonly Button _dictate = new() { Text = "Dictate", AutoSize = true };
+    private readonly Button _read = new() { Text = "Read last", AutoSize = true };
+    private readonly IVoiceService _voice;
+    private string _lastOutput = "";
     private readonly CancellationTokenSource _lifetime = new();
     private readonly OptionalChat _chat = OptionalChat.FromEnvironment();
     private readonly Font _cardTitleFont = new("Segoe UI Semibold", 10);
@@ -30,8 +34,11 @@ public sealed class CompanionForm : Form
     private bool _allowClose;
     private bool _resourcesDisposed;
 
-    public CompanionForm()
+    public CompanionForm() : this(new WindowsVoice()) { }
+
+    internal CompanionForm(IVoiceService voice)
     {
+        _voice = voice;
         Text = "keyboard.wtf × Alexa | Local companion";
         Size = new Size(1120, 790);
         MinimumSize = new Size(900, 650);
@@ -83,13 +90,17 @@ public sealed class CompanionForm : Form
         footer.RowStyles.Add(new RowStyle(SizeType.Absolute, 38));
         footer.RowStyles.Add(new RowStyle(SizeType.Absolute, 34));
         footer.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
-        var composer = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 3 };
+        var composer = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 5 };
         composer.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+        composer.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        composer.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
         composer.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
         composer.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
         composer.Controls.Add(_input, 0, 0);
         composer.Controls.Add(_send, 1, 0);
         composer.Controls.Add(_cancel, 2, 0);
+        composer.Controls.Add(_dictate, 3, 0);
+        composer.Controls.Add(_read, 4, 0);
         footer.Controls.Add(composer, 0, 0);
         var shortcuts = new FlowLayoutPanel { Dock = DockStyle.Fill };
         foreach (var pair in new[] { ("Desktop status", "status"), ("Save handoff", "save"), ("Load handoff", "load"), ("Open Notepad", "notepad"), ("Save workspace", "save workspace"), ("Restore", "restore workspace") })
@@ -107,6 +118,20 @@ public sealed class CompanionForm : Form
         _send.Click += (_, _) => StartCommand(_input.Text);
         _connect.Click += (_, _) => _currentTask = RunOperationAsync(ConnectAsync);
         _cancel.Click += (_, _) => _operation?.Cancel();
+        _dictate.Click += (_, _) => _currentTask = RunOperationAsync(async ct => {
+            _status.Text = "Listening · microphone active";
+            AddCard("Dictation", "Listening for one phrase. Nothing is sent until you review the transcript and press Send. Cancel request stops listening.", Muted);
+            var transcript = await _voice.ListenAsync(ct);
+            ct.ThrowIfCancellationRequested();
+            _input.Text = transcript.Text;
+            AddCard("Review transcript", $"Recognition confidence: {transcript.Confidence:P0}. Edit the input, then press Send if correct. No command has been executed.", Muted);
+        });
+        _read.Click += (_, _) => _currentTask = RunOperationAsync(async ct => {
+            if (string.IsNullOrWhiteSpace(_lastOutput)) return;
+            var text = _lastOutput[..Math.Min(500, _lastOutput.Length)];
+            _status.Text = "Reading aloud · Cancel to stop";
+            await _voice.SpeakAsync(text, ct);
+        });
         _input.KeyDown += (_, e) => { if (e.KeyCode == Keys.Enter) { e.SuppressKeyPress = true; StartCommand(_input.Text); } };
         Shown += (_, _) =>
         {
@@ -214,6 +239,8 @@ public sealed class CompanionForm : Form
         _operation = timeout;
         SetBusy(true);
         try { await operation(timeout.Token); }
+        catch (VoiceUnavailableException ex)
+        { if (!_closing) AddCard("Voice unavailable", ex.Message, Color.Salmon); }
         catch (ChatUnavailableException ex)
         { if (!_closing) AddCard("Optional AI unavailable", ex.Message, Color.Salmon); }
         catch (OperationCanceledException)
@@ -237,6 +264,8 @@ public sealed class CompanionForm : Form
         _connect.Enabled = !busy;
         _send.Enabled = !busy;
         _cancel.Enabled = busy;
+        _dictate.Enabled = !busy;
+        _read.Enabled = !busy && !string.IsNullOrWhiteSpace(_lastOutput);
         _name.Enabled = !busy;
         _summary.Enabled = !busy;
         foreach (var button in _shortcuts) button.Enabled = !busy;
@@ -247,6 +276,7 @@ public sealed class CompanionForm : Form
     private void AddCard(string title, string text, Color color)
     {
         if (_closing || IsDisposed) return;
+        if (title != "You") _lastOutput = text;
         var card = new FlowLayoutPanel { AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, FlowDirection = FlowDirection.TopDown, WrapContents = false, BackColor = Surface, Padding = new Padding(16), Margin = new Padding(0, 0, 0, 14) };
         var width = Math.Max(300, _history.ClientSize.Width - 85);
         card.Controls.Add(new Label { AutoSize = true, MaximumSize = new Size(width, 0), Text = title, ForeColor = color, Font = _cardTitleFont });
@@ -336,6 +366,31 @@ public sealed class CompanionForm : Form
         await _currentTask;
         Ensure(LastCard().Title == "get_workspace_policy · completed", "workspace policy query failed");
 
+        if (_voice is not RecordingVoice voice) throw new InvalidOperationException("UI smoke must use the explicit recording voice adapter.");
+        _dictate.PerformClick();
+        await _currentTask;
+        Ensure(_input.Text == "status" && LastCard().Title == "Review transcript", "dictation must fill input without executing a command");
+        _send.PerformClick();
+        await _currentTask;
+        Ensure(LastCard().Title == "get_desktop_status · completed", "reviewed transcript Send did not use real MCP");
+        var spoken = LastCard().Body;
+        _read.PerformClick();
+        await _currentTask;
+        Ensure(voice.Spoken == spoken[..Math.Min(500, spoken.Length)], "read-aloud button did not use the explicit output adapter");
+        voice.Fail = true;
+        _dictate.PerformClick();
+        await _currentTask;
+        Ensure(LastCard().Title == "Voice unavailable" && _bridge is not null && _send.Enabled, "microphone failure broke manual MCP mode");
+        voice.Fail = false;
+        voice.Block = true;
+        _input.Text = "preserve input";
+        _dictate.PerformClick();
+        await voice.Listening.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        _cancel.PerformClick();
+        await _currentTask;
+        Ensure(_input.Text == "preserve input" && _dictate.Enabled && _send.Enabled, "cancelled dictation changed input or stranded controls");
+        voice.Block = false;
+
         var directory = Environment.GetEnvironmentVariable("ALEXA_UI_CAPTURE_DIR");
         if (!string.IsNullOrWhiteSpace(directory))
         {
@@ -348,7 +403,7 @@ public sealed class CompanionForm : Form
             Size = MinimumSize;
             PerformLayout();
             Refresh();
-            foreach (var control in new Control[] { _input, _send, _cancel, _connect, _name, _summary, _tools }.Concat(_shortcuts))
+            foreach (var control in new Control[] { _input, _send, _cancel, _connect, _name, _summary, _tools, _dictate, _read }.Concat(_shortcuts))
             {
                 var bounds = RectangleToClient(control.RectangleToScreen(control.ClientRectangle));
                 Ensure(ClientRectangle.Contains(bounds), "control clipped at minimum window size: " + control.GetType().Name);
