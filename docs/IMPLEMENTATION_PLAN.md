@@ -11,8 +11,8 @@ Source of truth: the current GitHub branch. Original production repository `Unkn
 
 ## Highest-priority next tasks
 
-1. **Local access control:** implement and test authentication/session protection for all MCP calls. Loopback plus Host/Origin checks are not enough; maintain a smooth no-key local client experience.
-2. **Action authorization:** require an explicit user authorization signal at the server for side-effecting tools; the console confirmation alone is insufficient for other clients.
+1. **Local access control (implemented, CI verification pending):** the bridge rotates a cryptographically random local bearer token on startup, the no-key simulator automatically reads it, and all MCP HTTP methods reject missing/invalid tokens. Confirm the latest CI smoke passes. This does not protect against malicious same-user programs or provide secure remote access.
+2. **Action authorization (next priority):** require a real server-enforced user approval signal for desktop side effects. A client holding the bearer token can currently invoke Notepad without a fresh on-device approval; the simulator's console confirmation is insufficient for other clients.
 3. **Tool error semantics:** invalid input and business failures should return MCP `isError` rather than success-shaped text.
 4. **Desktop UI:** create a small Windows GUI simulator that uses the same genuine MCP client transport.
 5. **Production adapter reuse:** inspect permission policy and existing working app/window services in the read-only original; extract only narrow, verified capabilities.
