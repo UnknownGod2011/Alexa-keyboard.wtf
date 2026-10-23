@@ -2,7 +2,7 @@
 
 A standalone Windows companion that exposes a small set of desktop capabilities through the Model Context Protocol. A console simulator and a Windows graphical simulator use the same authenticated MCP client over Streamable HTTP.
 
-**Status:** development preview. Automated Windows protocol and regression checks pass for the security foundation. The graphical simulator is newly implemented and its build is being validated; visible Windows interaction and production Alexa+ connectivity remain unverified. This is an independent application, not an official Amazon Alexa product.
+**Status:** development preview. Automated Windows protocol and regression checks, the combined launch policy, and the graphical simulator build pass CI; visible Windows interaction and production Alexa+ connectivity remain unverified. This is an independent application, not an official Amazon Alexa product.
 
 ## Implemented features
 
@@ -57,6 +57,24 @@ dotnet run --project src/AlexaSimulator/AlexaSimulator.csproj -c Release --no-bu
 
 Run both processes as the same OS user. Start the bridge first. No cloud API key, account, or private configuration from the original application is needed.
 
+### Single-launcher option
+
+From Windows PowerShell in the source folder:
+
+```powershell
+.\scripts\start-local.ps1
+```
+
+It builds the projects, starts a bridge console, opens the graphical simulator, and requests authenticated bridge shutdown when the simulator closes. Add `-EnableDesktopActions` to opt in to per-request launch approvals, or `-Console` to use the console client. `-SkipBuild` uses an existing Release build. The launcher refuses an occupied port and never intentionally stops a server it did not start.
+
+### Preview package
+
+```powershell
+.\scripts\package-windows.ps1
+```
+
+This prepares a framework-dependent development package in `artifacts/windows-preview`; it refuses to overwrite an existing output directory. Windows CI also uploads that folder as `windows-development-preview`. See [package instructions](docs/PREVIEW_PACKAGE.md). This is a preview artifact, not a verified release or a claim that interactive Windows tests passed.
+
 ## No-key walkthrough
 
 1. Connect. The simulator initializes MCP and discovers the actual server tools.
@@ -102,7 +120,7 @@ Endpoint: `http://127.0.0.1:32178/mcp`, Streamable HTTP.
 
 On Windows the bridge creates its token at `%LOCALAPPDATA%\AlexaKeyboardBridge\runtime\mcp-auth-token`. Other same-user clients must read it and send `Authorization: Bearer <token>` on every MCP request, including GET and DELETE. Never commit, log, or share the token. The included clients handle it automatically.
 
-The unauthenticated `/health` endpoint is for startup checks; it does not prove MCP interoperability.
+An authenticated `POST /local/shutdown` endpoint supports graceful lifecycle control; it is separate from the MCP tool inventory. The unauthenticated `/health` endpoint is for startup checks; it does not prove MCP interoperability.
 
 ## Tests
 
@@ -117,6 +135,8 @@ dotnet run --project tests/AlexaBridge.Checks/AlexaBridge.Checks.csproj -c Relea
 The smoke script starts the real bridge, initializes the independent SDK client, discovers tools, and tests authenticated calls, handoff persistence, invalid inputs, missing records, denied launches, unknown tools, and Host/Origin/authentication defenses. It uses temporary handoff storage and does not launch Notepad.
 
 The regression executable tests permission denials, cancellation before side effects, launch failure reporting, storage validation, corrupt files, concurrent atomic saves, and manual command routing. Its recording launcher is a test adapter, not evidence of a real desktop launch.
+
+An independent Python HTTP client additionally checks MCP `2025-11-25` negotiation, initialization lifecycle, argument schemas, concurrent calls, and protocol errors. Startup tests reject a second server without rotating its live token; shutdown tests require authentication and verify credential cleanup. Runtime and handoff directories are isolated during smoke tests.
 
 Windows CI builds the graphical simulator but does not establish its visual layout or visible desktop behavior. See [test evidence](docs/TEST_RESULTS.md) and [interactive Windows checks](docs/WINDOWS_MANUAL_TEST.md).
 

@@ -77,6 +77,28 @@ try
     Check(!File.Exists(Path.Combine(root, "escape.json")),
         "path traversal never creates a file within an escaped location");
 
+    var priorRuntime = Environment.GetEnvironmentVariable("ALEXA_BRIDGE_RUNTIME_DIR");
+    var runtime = Path.Combine(root, "runtime");
+    Environment.SetEnvironmentVariable("ALEXA_BRIDGE_RUNTIME_DIR", runtime);
+    try
+    {
+        string firstToken;
+        using (var access = LocalMcpAccess.Create())
+        {
+            firstToken = File.ReadAllText(Path.Combine(runtime, "mcp-auth-token")).Trim();
+            Check(firstToken.Length == 64 && firstToken.All(Uri.IsHexDigit), "local credential has 256 random bits encoded as hex");
+            Check(access.IsAuthorized("Bearer " + firstToken), "current token authenticates");
+            Check(!access.IsAuthorized("Bearer " + new string('0', 64)) && !access.IsAuthorized(""), "wrong or missing tokens fail");
+            Expect<IOException>(() => { using var duplicate = LocalMcpAccess.Create(); });
+            Check(File.ReadAllText(Path.Combine(runtime, "mcp-auth-token")).Trim() == firstToken, "second instance cannot replace live token");
+        }
+        Check(!File.Exists(Path.Combine(runtime, "mcp-auth-token")), "graceful disposal removes token");
+        using var restarted = LocalMcpAccess.Create();
+        var nextToken = File.ReadAllText(Path.Combine(runtime, "mcp-auth-token")).Trim();
+        Check(nextToken != firstToken && !restarted.IsAuthorized("Bearer " + firstToken), "restart rotates token and rejects stale credentials");
+    }
+    finally { Environment.SetEnvironmentVariable("ALEXA_BRIDGE_RUNTIME_DIR", priorRuntime); }
+
     Console.WriteLine($"PASS: {checks} permission, cancellation, tool-result and persistence checks.");
     Console.WriteLine("NOTE: adapter tests use a recording launcher; no Windows UI action was attempted.");
     return 0;

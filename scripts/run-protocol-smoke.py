@@ -9,12 +9,15 @@ from __future__ import annotations
 
 import pathlib
 import os
+import json
+import socket
 import subprocess
 import sys
 import tempfile
 import time
 import urllib.error
 import urllib.request
+from raw_protocol_checks import run_checks
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 SERVER = ROOT / "src" / "AlexaBridge" / "bin" / "Release" / "net8.0" / "AlexaBridge.dll"
@@ -27,8 +30,14 @@ def main() -> int:
         print("Build both projects in Release configuration first.", file=sys.stderr)
         return 2
 
+    with socket.socket() as probe:
+        if probe.connect_ex(("127.0.0.1", 32178)) == 0:
+            print("Port 32178 is occupied; refusing to test or stop another server.", file=sys.stderr)
+            return 2
+
     with tempfile.TemporaryDirectory(prefix="alexa-mcp-smoke-") as data, tempfile.TemporaryFile(mode="w+t", encoding="utf-8") as log:
-        env = dict(os.environ, ALEXA_BRIDGE_DATA_DIR=data)
+        runtime = pathlib.Path(data) / "runtime"
+        env = dict(os.environ, ALEXA_BRIDGE_DATA_DIR=str(pathlib.Path(data) / "handoffs"), ALEXA_BRIDGE_RUNTIME_DIR=str(runtime))
         server = subprocess.Popen(
             ["dotnet", str(SERVER), "--deny-actions"],
             cwd=ROOT,
@@ -43,13 +52,21 @@ def main() -> int:
                     raise RuntimeError(f"MCP server exited early: {server.returncode}")
                 try:
                     with urllib.request.urlopen(HEALTH, timeout=1) as response:
-                        if response.status == 200:
+                        if response.status == 200 and json.load(response).get("processId") == server.pid:
                             break
                 except (urllib.error.URLError, TimeoutError, OSError):
                     time.sleep(0.5)
             else:
                 raise RuntimeError("MCP server did not become healthy within 30 seconds.")
 
+            token_file = runtime / "mcp-auth-token"
+            token = token_file.read_text().strip()
+            duplicate = subprocess.run(["dotnet", str(SERVER), "--deny-actions"], cwd=ROOT,
+                                       capture_output=True, text=True, timeout=15, env=env, stdin=subprocess.DEVNULL)
+            if duplicate.returncode == 0 or token_file.read_text().strip() != token:
+                raise RuntimeError("Second bridge instance did not preserve the running server's credential.")
+            print("PASS: second server rejected without changing the live token.")
+            run_checks(token)
             result = subprocess.run(
                 ["dotnet", str(CLIENT), "--smoke"],
                 cwd=ROOT,
@@ -64,8 +81,25 @@ def main() -> int:
                 print(result.stderr, file=sys.stderr, end="")
             if result.returncode != 0:
                 raise RuntimeError(f"MCP SDK client smoke test failed: exit {result.returncode}")
+
+            # A lifecycle request must be authenticated, just like MCP.
+            shutdown = "http://127.0.0.1:32178/local/shutdown"
+            try:
+                urllib.request.urlopen(urllib.request.Request(shutdown, data=b"", method="POST"), timeout=3)
+                raise RuntimeError("Unauthenticated shutdown was accepted.")
+            except urllib.error.HTTPError as error:
+                if error.code != 401:
+                    raise RuntimeError("Unauthenticated shutdown returned an unexpected status.") from error
+            request = urllib.request.Request(shutdown, data=b"", method="POST", headers={"Authorization": "Bearer " + token})
+            with urllib.request.urlopen(request, timeout=3) as response:
+                if response.status != 202:
+                    raise RuntimeError("Authenticated shutdown was not accepted.")
+            server.wait(timeout=8)
+            if server.returncode != 0 or token_file.exists():
+                raise RuntimeError("Graceful shutdown failed or left its credential behind.")
+            print("PASS: authenticated graceful shutdown exits cleanly and removes the token.")
             return 0
-        except (RuntimeError, subprocess.TimeoutExpired) as exc:
+        except (RuntimeError, subprocess.TimeoutExpired, urllib.error.URLError, json.JSONDecodeError) as exc:
             print(f"FAIL: {exc}", file=sys.stderr)
             log.seek(0)
             print("--- MCP server output ---", file=sys.stderr)

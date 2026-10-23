@@ -32,4 +32,11 @@ jobs:
         run: python scripts/run-protocol-smoke.py
       - name: Permission, cancellation and persistence regression checks
         run: dotnet run --project tests/AlexaBridge.Checks/AlexaBridge.Checks.csproj --configuration Release
+      - name: Prepare framework-dependent Windows preview
+        run: ./scripts/package-windows.ps1
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-development-preview
+          path: artifacts/windows-preview
+          if-no-files-found: error
 

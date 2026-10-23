@@ -38,7 +38,7 @@ app.Use(async (context, next) =>
     }
     // Require authentication for every MCP request, including GET and DELETE.
     // /health remains unauthenticated but reveals no token or private context.
-    if (context.Request.Path.StartsWithSegments("/mcp") &&
+    if ((context.Request.Path.StartsWithSegments("/mcp") || context.Request.Path.StartsWithSegments("/local")) &&
         !localAccess.IsAuthorized(context.Request.Headers.Authorization.ToString()))
     {
         context.Response.StatusCode = StatusCodes.Status401Unauthorized;
@@ -52,9 +52,16 @@ app.MapGet("/health", () => Results.Ok(new
 {
     name = "keyboard.wtf Alexa MCP companion",
     status = "local-only",
+    processId = Environment.ProcessId,
     ai_provider = "none",
     note = "Health response does not establish MCP interoperability."
 }));
 app.MapMcp("/mcp");
+// Authenticated lifecycle endpoint used by the launcher that owns this process.
+app.MapPost("/local/shutdown", (HttpContext context, IHostApplicationLifetime lifetime) =>
+{
+    context.Response.OnCompleted(() => { lifetime.StopApplication(); return Task.CompletedTask; });
+    return Results.Accepted();
+});
 Console.WriteLine("Local MCP endpoint: http://127.0.0.1:32178/mcp");
 app.Run();

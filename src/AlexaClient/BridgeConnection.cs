@@ -15,9 +15,7 @@ public sealed class BridgeConnection : IAsyncDisposable
 
     public static async Task<BridgeConnection> ConnectAsync(CancellationToken cancellationToken)
     {
-        var localData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-        if (string.IsNullOrWhiteSpace(localData)) throw new IOException("Local application data directory unavailable.");
-        var path = Path.Combine(localData, "AlexaKeyboardBridge", "runtime", "mcp-auth-token");
+        var path = AlexaShared.LocalRuntime.TokenPath;
         var token = (await File.ReadAllTextAsync(path, cancellationToken)).Trim();
         if (token.Length != 64 || !token.All(Uri.IsHexDigit))
             throw new IOException("Invalid local credential. Restart the bridge, then reconnect.");

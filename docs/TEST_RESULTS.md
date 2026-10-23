@@ -56,3 +56,13 @@
 ## Graphical simulator and combined policy checkpoint
 
 Implemented after the preceding pass: shared client, manual command routing, graphical simulator, preservation of operator opt-in before fresh host approval. New Windows CI is pending. A graphical build does not prove visible interaction. Follow WINDOWS_MANUAL_TEST.md on an interactive Windows machine.
+
+## Shared client, graphical build and combined policy
+
+- Commit: a6372f35d59ec6208d63d98434670037451b037e
+- Windows CI: [39987052287](https://github.com/UnknownGod2011/Alexa-keyboard.wtf/actions/runs/39987052287), **success**.
+- Bridge, console, shared client and Windows Forms simulator compiled.
+- Actual SDK MCP smoke and permission/persistence/manual-routing regression executable passed.
+- This is build and headless evidence. No window layout, visible Notepad launch or production Alexa connection was tested.
+
+Newest raw HTTP, lifecycle, launcher and preview-package changes are pending the next CI run.
