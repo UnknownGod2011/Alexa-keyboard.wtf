@@ -45,7 +45,7 @@ foreach ($project in @('AlexaBridge','AlexaSimulator','AlexaDesktop')) {
         $packages[$key] = [ordered]@{ package = $key; license = $license; copyright = [string]$nuspec.package.metadata.copyright }
     }
 }
-@($packages.Values) | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath (Join-Path $output 'dependency-inventory.json') -Encoding utf8
+@($packages.Values | Sort-Object { $_.package }) | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath (Join-Path $output 'dependency-inventory.json') -Encoding utf8
 $forbidden = Get-ChildItem -LiteralPath $output -Recurse -File | Where-Object { $_.Name -in @('mcp-auth-token','server.lock') -or $_.Extension -in @('.key','.pem','.pfx') }
 if ($forbidden) { throw 'Unexpected credential files found in the package.' }
 Write-Host "Framework-dependent Windows preview prepared: $output"

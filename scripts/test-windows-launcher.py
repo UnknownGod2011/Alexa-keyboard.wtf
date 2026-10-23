@@ -36,6 +36,16 @@ def main() -> int:
             if probe.connect_ex(("127.0.0.1", 32178)) == 0:
                 raise RuntimeError("Launcher left a server listening after the client closed.")
         print("PASS: extracted package with spaces launches through MCP and cleans up its own server/token.")
+        with socket.socket() as occupied:
+            occupied.bind(("127.0.0.1", 32178))
+            occupied.listen(2)
+            refused = subprocess.run(command, cwd=extracted, env=env, input="quit\n",
+                                     capture_output=True, text=True, timeout=15, check=False)
+            if refused.returncode == 0 or "Port 32178 is in use" not in refused.stdout + refused.stderr:
+                raise RuntimeError("Launcher did not refuse an existing listener.")
+            if (runtime / "mcp-auth-token").exists():
+                raise RuntimeError("Refused launcher unexpectedly created a credential.")
+        print("PASS: launcher refuses a foreign listener without creating or stopping a bridge.")
         return 0
 
 

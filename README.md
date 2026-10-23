@@ -120,7 +120,7 @@ Endpoint: `http://127.0.0.1:32178/mcp`, Streamable HTTP.
 
 On Windows the bridge creates its token at `%LOCALAPPDATA%\AlexaKeyboardBridge\runtime\mcp-auth-token`. Other same-user clients must read it and send `Authorization: Bearer <token>` on every MCP request, including GET and DELETE. Never commit, log, or share the token. The included clients handle it automatically.
 
-An authenticated `POST /local/shutdown` endpoint supports graceful lifecycle control; it is separate from the MCP tool inventory. The unauthenticated `/health` endpoint is for startup checks; it does not prove MCP interoperability.
+An authenticated `POST /local/shutdown?processId=<owned-pid>` endpoint supports graceful lifecycle control; it is separate from the MCP tool inventory. The unauthenticated `/health` endpoint is for startup checks; it does not prove MCP interoperability.
 
 ## Tests
 
@@ -136,7 +136,7 @@ The smoke script starts the real bridge, initializes the independent SDK client,
 
 The regression executable tests permission denials, cancellation before side effects, launch failure reporting, storage validation, corrupt files, concurrent atomic saves, and manual command routing. Its recording launcher is a test adapter, not evidence of a real desktop launch.
 
-An independent Python HTTP client additionally checks MCP `2025-11-25` negotiation, initialization lifecycle, argument schemas, concurrent calls, and protocol errors. Startup tests reject a second server without rotating its live token; shutdown tests require authentication and verify credential cleanup. Runtime and handoff directories are isolated during smoke tests.
+An independent Python HTTP client additionally checks MCP `2025-11-25` negotiation, initialization lifecycle, argument schemas, concurrent calls, and protocol errors. Startup tests reject a second server without rotating its live token; shutdown tests require authentication and verify credential cleanup. Runtime and handoff directories are isolated during smoke tests. Windows CI also exercises published DLLs and the extracted launcher from a directory with spaces. It verifies that the launcher refuses a foreign listener and that shutdown rejects an owner-process mismatch.
 
 Windows CI builds the graphical simulator but does not establish its visual layout or visible desktop behavior. See [test evidence](docs/TEST_RESULTS.md) and [interactive Windows checks](docs/WINDOWS_MANUAL_TEST.md).
 

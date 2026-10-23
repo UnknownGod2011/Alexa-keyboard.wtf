@@ -86,3 +86,13 @@ A new hosted graphical-control smoke now exercises actual form button handlers t
 - The Windows Forms application ran its real button handlers and authenticated transport: connection/discovery, status, save/load, error recovery, unsupported-input handling and reconnect all passed.
 - A bitmap rendered from the actual Windows controls was captured in CI and visually inspected in Work. It is a control render, not a fabricated screenshot or proof of an end-user interactive desktop.
 - Follow-up: improved result readability and summary restoration; added compact-window layout checks, published-DLL validation and extracted-package launcher tests. These follow-up changes await CI.
+
+## Published package and extracted launcher
+
+- Commit: fe949467ddcef3d6f648a74fa92222c47d31546b
+- Windows CI: [39989264504](https://github.com/UnknownGod2011/Alexa-keyboard.wtf/actions/runs/39989264504), **success**.
+- Source and published DLLs both passed raw protocol, official-SDK and graphical button/MCP checks.
+- Compact-window required controls stayed within the form bounds. Source/package control renders were captured; standard and compact source renders were visually inspected.
+- The real extracted-package launcher succeeded from a path with spaces, performed a genuine status MCP call, stopped its owned server, and removed its token.
+- All PowerShell entrypoints parsed. Package publication included dependency inventory, package metadata, available notices and preserved upstream license texts.
+- Follow-up audit added owner-process matching for shutdown, refusal testing for a foreign listener, console input/deadline separation and robust graphical connection cleanup. These small follow-ups await CI.

@@ -14,7 +14,7 @@ This is a development preview, not a verified release.
 | Hosted graphical control events/render | Passed CI 39988366057; captured control render visually inspected |
 | Visible simulator behavior | Interactive end-user desktop still unverified |
 | Actual Notepad window | Unverified; interactive Windows required |
-| Fresh download / preview package | CI built/uploaded the preview; extracted-package launch and interactive Windows validation pending |
+| Fresh extracted preview package | Passed CI 39989264504, including path with spaces, actual MCP call and cleanup |
 | Optional AI / voice | Not implemented |
 | Production Alexa+ connectivity | Not implemented or verified |
 | Ready for main / public release | No; remaining gates must be completed |

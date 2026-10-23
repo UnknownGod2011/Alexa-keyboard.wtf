@@ -106,13 +106,21 @@ def main() -> int:
                     raise RuntimeError(f"Graphical MCP smoke failed: exit {ui.returncode}")
 
             # A lifecycle request must be authenticated, just like MCP.
-            shutdown = "http://127.0.0.1:32178/local/shutdown"
+            shutdown = f"http://127.0.0.1:32178/local/shutdown?processId={server.pid}"
             try:
                 urllib.request.urlopen(urllib.request.Request(shutdown, data=b"", method="POST"), timeout=3)
                 raise RuntimeError("Unauthenticated shutdown was accepted.")
             except urllib.error.HTTPError as error:
                 if error.code != 401:
                     raise RuntimeError("Unauthenticated shutdown returned an unexpected status.") from error
+            wrong_owner = urllib.request.Request(f"http://127.0.0.1:32178/local/shutdown?processId={server.pid + 1}",
+                                                data=b"", method="POST", headers={"Authorization": "Bearer " + token})
+            try:
+                urllib.request.urlopen(wrong_owner, timeout=3)
+                raise RuntimeError("Shutdown accepted a different owner process ID.")
+            except urllib.error.HTTPError as error:
+                if error.code != 409:
+                    raise RuntimeError("Shutdown did not reject an owner mismatch.") from error
             request = urllib.request.Request(shutdown, data=b"", method="POST", headers={"Authorization": "Bearer " + token})
             with urllib.request.urlopen(request, timeout=3) as response:
                 if response.status != 202:

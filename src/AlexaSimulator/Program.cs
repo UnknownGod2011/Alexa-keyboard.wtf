@@ -28,14 +28,17 @@ try
         if (string.IsNullOrEmpty(command)) continue;
         try
         {
-            using var callTimeout = new CancellationTokenSource(TimeSpan.FromSeconds(40));
+            // User typing does not consume the network request deadline.
+            using var callTimeout = new CancellationTokenSource();
             switch (command)
             {
                 case "tools":
+                    callTimeout.CancelAfter(TimeSpan.FromSeconds(40));
                     var tools = await client.ListToolsAsync(cancellationToken: callTimeout.Token);
                     foreach (var tool in tools) Console.WriteLine("  " + tool.Name);
                     break;
                 case "status":
+                    callTimeout.CancelAfter(TimeSpan.FromSeconds(40));
                     Print(await client.CallToolAsync("get_desktop_status", cancellationToken: callTimeout.Token));
                     break;
                 case "save":
@@ -43,6 +46,7 @@ try
                     var saveName = Console.ReadLine() ?? "";
                     Console.Write("Task summary (not sensitive data): ");
                     var summary = Console.ReadLine() ?? "";
+                    callTimeout.CancelAfter(TimeSpan.FromSeconds(40));
                     Print(await client.CallToolAsync("save_task_handoff", new Dictionary<string, object?>
                     {
                         ["name"] = saveName, ["summary"] = summary
@@ -51,12 +55,14 @@ try
                 case "load":
                     Console.Write("Session name: ");
                     var loadName = Console.ReadLine() ?? "";
+                    callTimeout.CancelAfter(TimeSpan.FromSeconds(40));
                     Print(await client.CallToolAsync("load_task_handoff", new Dictionary<string, object?>
                     {
                         ["name"] = loadName
                     }, cancellationToken: callTimeout.Token));
                     break;
                 case "notepad":
+                    callTimeout.CancelAfter(TimeSpan.FromSeconds(40));
                     Console.WriteLine("Requesting Notepad. Approve or deny this request in the server console.");
                     Print(await client.CallToolAsync("open_notepad", cancellationToken: callTimeout.Token));
                     break;

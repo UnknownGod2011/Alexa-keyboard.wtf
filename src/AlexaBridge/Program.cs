@@ -58,10 +58,11 @@ app.MapGet("/health", () => Results.Ok(new
 }));
 app.MapMcp("/mcp");
 // Authenticated lifecycle endpoint used by the launcher that owns this process.
-app.MapPost("/local/shutdown", (HttpContext context, IHostApplicationLifetime lifetime) =>
+app.MapPost("/local/shutdown", (int processId, HttpContext context, IHostApplicationLifetime lifetime) =>
 {
+    if (processId != Environment.ProcessId) return Results.StatusCode(StatusCodes.Status409Conflict);
     context.Response.OnCompleted(() => { lifetime.StopApplication(); return Task.CompletedTask; });
-    return Results.Accepted();
+    return Results.StatusCode(StatusCodes.Status202Accepted);
 });
 Console.WriteLine("Local MCP endpoint: http://127.0.0.1:32178/mcp");
 app.Run();

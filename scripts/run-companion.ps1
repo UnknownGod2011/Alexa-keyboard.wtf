@@ -47,7 +47,7 @@ try {
                 }
                 $token = (Get-Content -LiteralPath (Join-Path $runtime 'mcp-auth-token') -Raw).Trim()
                 $headers = @{ Authorization = "Bearer $token" }
-                Invoke-RestMethod -Method Post -Uri 'http://127.0.0.1:32178/local/shutdown' -Headers $headers -TimeoutSec 3 | Out-Null
+                Invoke-RestMethod -Method Post -Uri ("http://127.0.0.1:32178/local/shutdown?processId={0}" -f $server.Id) -Headers $headers -TimeoutSec 3 | Out-Null
             } catch { Write-Warning 'Graceful bridge shutdown was unavailable; stopping only this launcher-owned process.' }
         }
         if (-not $server.WaitForExit(5000)) { $server.Kill(); $server.WaitForExit() }

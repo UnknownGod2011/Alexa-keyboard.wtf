@@ -21,11 +21,13 @@ public sealed class CompanionForm : Form
     private readonly Button _cancel = new() { Text = "Cancel request", AutoSize = true, Enabled = false };
     private readonly List<Button> _shortcuts = [];
     private readonly CancellationTokenSource _lifetime = new();
+    private readonly Font _cardTitleFont = new("Segoe UI Semibold", 10);
     private CancellationTokenSource? _operation;
     private Task _currentTask = Task.CompletedTask;
     private BridgeConnection? _bridge;
     private bool _closing;
     private bool _allowClose;
+    private bool _resourcesDisposed;
 
     public CompanionForm()
     {
@@ -163,7 +165,7 @@ public sealed class CompanionForm : Form
     private async Task ConnectAsync(CancellationToken ct)
     {
         _status.Text = "Connecting…";
-        if (_bridge is not null) { await _bridge.DisposeAsync(); _bridge = null; }
+        await DisconnectAsync();
         _bridge = await BridgeConnection.ConnectAsync(ct);
         await DiscoverAsync(ct);
         AddCard("Connected", "Authenticated MCP initialization and tool discovery completed over Streamable HTTP.", Accent);
@@ -193,8 +195,7 @@ public sealed class CompanionForm : Form
         catch (Exception ex) when (ex is McpException or IOException or UnauthorizedAccessException or HttpRequestException or InvalidOperationException or JsonException or KeyNotFoundException or FormatException)
         {
             if (!_closing) AddCard("Connection or request failed", ex.Message + Environment.NewLine + "Start the bridge as the same OS user, then reconnect. Its local credential rotates on restart.", Color.Salmon);
-            if (_bridge is not null) { await _bridge.DisposeAsync(); _bridge = null; }
-            _tools.Items.Clear();
+            await DisconnectAsync();
         }
         finally
         {
@@ -220,7 +221,7 @@ public sealed class CompanionForm : Form
         if (_closing || IsDisposed) return;
         var card = new FlowLayoutPanel { AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, FlowDirection = FlowDirection.TopDown, WrapContents = false, BackColor = Surface, Padding = new Padding(16), Margin = new Padding(0, 0, 0, 14) };
         var width = Math.Max(300, _history.ClientSize.Width - 85);
-        card.Controls.Add(new Label { AutoSize = true, MaximumSize = new Size(width, 0), Text = title, ForeColor = color, Font = new Font("Segoe UI Semibold", 10) });
+        card.Controls.Add(new Label { AutoSize = true, MaximumSize = new Size(width, 0), Text = title, ForeColor = color, Font = _cardTitleFont });
         card.Controls.Add(new Label { AutoSize = true, MaximumSize = new Size(width, 0), Text = text, ForeColor = Color.WhiteSmoke, Margin = new Padding(0, 8, 0, 0), UseMnemonic = false });
         _history.Controls.Add(card);
         _history.ScrollControlIntoView(card);
@@ -321,6 +322,19 @@ public sealed class CompanionForm : Form
         if (!condition) throw new InvalidOperationException(message);
     }
 
+    private async Task DisconnectAsync()
+    {
+        var previous = _bridge;
+        _bridge = null;
+        _tools.Items.Clear();
+        if (previous is null) return;
+        try { await previous.DisposeAsync().AsTask().WaitAsync(TimeSpan.FromSeconds(5)); }
+        catch (Exception ex) when (ex is McpException or HttpRequestException or IOException or TimeoutException or OperationCanceledException or InvalidOperationException)
+        {
+            if (!_closing) AddCard("Connection cleanup", "The previous connection did not close cleanly. Reconnect to start a new session.", Muted);
+        }
+    }
+
     private async void OnClosing(object? sender, FormClosingEventArgs e)
     {
         if (_allowClose) return;
@@ -332,10 +346,22 @@ public sealed class CompanionForm : Form
         try
         {
             await _currentTask.WaitAsync(TimeSpan.FromSeconds(5));
-            if (_bridge is not null) await _bridge.DisposeAsync().AsTask().WaitAsync(TimeSpan.FromSeconds(5));
         }
         catch (Exception) { /* Closing must not strand the window after a failed connection. */ }
+        await DisconnectAsync();
         _allowClose = true;
         Close();
+    }
+
+    protected override void Dispose(bool disposing)
+    {
+        if (disposing && !_resourcesDisposed)
+        {
+            _resourcesDisposed = true;
+            _lifetime.Cancel();
+            _lifetime.Dispose();
+            _cardTitleFont.Dispose();
+        }
+        base.Dispose(disposing);
     }
 }
