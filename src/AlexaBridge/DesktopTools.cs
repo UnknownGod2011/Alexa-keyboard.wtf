@@ -11,6 +11,11 @@ public static class DesktopTools
 {
     private static readonly object SessionLock = new();
 
+    // The server operator must opt in before this process can launch desktop apps.
+    // An MCP client cannot toggle this server-owned policy through a tool call.
+    private static bool DesktopActionsEnabled =>
+        string.Equals(Environment.GetEnvironmentVariable("ALEXA_ALLOW_DESKTOP_ACTIONS"), "1", StringComparison.Ordinal);
+
     [McpServerTool(Name = "get_desktop_status", ReadOnly = true, OpenWorld = false), Description("Return basic non-sensitive information about this MCP desktop companion.")]
     public static string GetDesktopStatus()
     {
@@ -19,13 +24,16 @@ public static class DesktopTools
             windows = OperatingSystem.IsWindows(),
             processId = Environment.ProcessId,
             mode = "offline-manual",
-            supportsApplicationLaunch = OperatingSystem.IsWindows()
+            supportsApplicationLaunch = OperatingSystem.IsWindows(),
+            desktopActionsEnabled = DesktopActionsEnabled
         });
     }
 
     [McpServerTool(Name = "open_notepad", OpenWorld = false), Description("Open Windows Notepad on the local interactive Windows desktop. No command or path arguments are accepted.")]
     public static string OpenNotepad()
     {
+        if (!DesktopActionsEnabled)
+            return "Denied: desktop application launches are disabled by the server operator. Set ALEXA_ALLOW_DESKTOP_ACTIONS=1 before starting the bridge to opt in.";
         if (!OperatingSystem.IsWindows())
             return "Not supported: this action requires Windows.";
         try
